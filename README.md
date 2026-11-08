@@ -76,4 +76,6 @@ tests/
 
 ## Deploying
 
-`npm run build` produces a static site in `dist/` (relative asset paths, so it works from any subfolder). It drops straight onto Cloudflare Pages: build command `npm run build`, output directory `dist`.
+`npm run build` produces a static site in `dist/` (relative asset paths, so it works from any subfolder).
+
+It deploys to Cloudflare Workers as static assets via `wrangler.jsonc` (no Worker script). In the Cloudflare dashboard, set the build command to `npm run build` and the deploy command to `npx wrangler deploy`. From your own machine, `npm run deploy` builds and deploys in one step (run `npx wrangler login` once first).
