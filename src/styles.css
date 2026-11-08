@@ -1,0 +1,82 @@
+/* Base reset (the prototype got these from the artifact host) */
+*,*::before,*::after{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;font-size:14px}
+img{max-width:100%}
+[hidden]{display:none!important}
+
+/* Layout: one full-height stage; HUD strip above it, touch controls pinned to the stage's bottom corners. Single dark torchlit look by design. */
+:root{
+  --void:#0b0d12; --stone:#161a23; --stone-2:#1a1f2a; --wall:#363f53; --wall-hi:#56617a; --edge:#262c3a;
+  --torch:#f2a541; --blood:#d6435b; --wisp:#c9b6ff; --rose:#e58fd0; --biter:#b9d36a; --ranger:#62d2c2; --mana:#5aa9ff; --life:#7fd18b; --gold:#e8c45a;
+  --ink:#ece6d8; --dim:#8b90a1;
+  --display:"Pixelify Sans","Courier New",monospace;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+html{height:100%;box-sizing:border-box}
+*,*::before,*::after{box-sizing:inherit}
+body{height:100%;background:var(--void);color:var(--ink);font-family:var(--mono);overflow:hidden}
+.app{height:100%;display:flex;flex-direction:column;gap:10px;padding-block:12px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.hud{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;font-variant-numeric:tabular-nums;font-size:12px}
+.hp{display:flex;align-items:center;gap:10px;flex:1 1 220px;min-width:0}
+.hp .val{font-family:var(--display);font-size:26px;font-weight:700;color:var(--torch);min-width:3.2ch;line-height:1}
+.hp .val.low{color:var(--blood)}
+.bar{flex:1;height:8px;background:var(--stone-2);border:1px solid var(--edge);border-radius:2px;overflow:hidden;max-width:220px}
+.bar i{display:block;height:100%;background:var(--torch);transition:width .15s linear}
+.bar i.low{background:var(--blood)}
+.lbl{color:var(--dim);letter-spacing:.12em;text-transform:uppercase;font-size:10px}
+.stats{display:flex;flex-wrap:wrap;gap:6px 16px}
+.stat{display:flex;gap:6px;align-items:baseline}
+.stat b{font-weight:600;color:var(--ink)}
+.stat.key b{color:var(--gold)} .stat.pot b{color:var(--mana)}
+.stage{position:relative;flex:1;min-height:0;border:1px solid var(--edge);border-radius:6px;overflow:hidden;
+  touch-action:none;user-select:none;-webkit-user-select:none;background:var(--void)}
+canvas{display:block;width:100%;height:100%}
+.say{position:absolute;left:50%;top:14px;transform:translateX(-50%);max-width:calc(100% - 32px);
+  font-family:var(--display);font-size:18px;color:var(--ink);text-align:center;text-wrap:balance;
+  text-shadow:0 2px 0 #000,0 0 12px rgba(0,0,0,.8);opacity:0;transition:opacity .25s;pointer-events:none}
+.say.on{opacity:1}
+.pad{position:absolute;right:14px;bottom:14px;display:none;gap:14px;align-items:flex-end}
+.pad button{border-radius:50%;border:2px solid var(--edge);color:var(--ink);font-family:var(--display);
+  font-size:14px;touch-action:none;-webkit-tap-highlight-color:transparent}
+.b-fire{width:84px;height:84px;background:rgba(242,165,65,.18);border-color:var(--torch)!important}
+.b-fire.down{background:rgba(242,165,65,.45)}
+.b-pot{width:60px;height:60px;background:rgba(90,169,255,.15);border-color:var(--mana)!important}
+.joyhint{position:absolute;left:14px;bottom:14px;color:var(--dim);font-size:11px;display:none;pointer-events:none}
+.keyhint{color:var(--dim);font-size:11px}
+@media (pointer:coarse){.pad{display:flex}.joyhint{display:block}.keyhint{display:none}}
+.ov{position:absolute;inset:0;display:grid;place-items:center;padding:16px;background:rgba(8,9,13,.72)}
+.card{max-width:440px;width:100%;max-height:100%;overflow:auto;background:var(--stone);border:1px solid var(--edge);border-radius:8px;padding:22px;display:grid;gap:14px}
+.card h1,.card h2{margin:0;font-family:var(--display);font-weight:700;color:var(--torch);text-wrap:balance;line-height:1.05}
+.card h1{font-size:34px} .card h2{font-size:28px}
+.card p{margin:0;line-height:1.5;color:var(--ink);font-size:13px}
+.ctl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:12px;margin:0}
+.ctl dt{color:var(--dim);letter-spacing:.1em;text-transform:uppercase;font-size:10px;align-self:center}
+.ctl dd{margin:0}
+kbd{font-family:var(--mono);border:1px solid var(--edge);border-bottom-width:2px;border-radius:3px;padding:0 5px;background:var(--stone-2)}
+.go{justify-self:start;font-family:var(--display);font-size:18px;padding:10px 22px;border-radius:4px;border:0;
+  background:var(--torch);color:#1a1206;cursor:pointer}
+.go:focus-visible,.pad button:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+.classes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cls{display:grid;gap:4px;align-content:start;text-align:left;padding:12px;border-radius:6px;border:1px solid var(--edge);background:var(--stone-2);color:var(--ink);font-family:var(--mono);cursor:pointer}
+.cls b{font-family:var(--display);font-size:18px;font-weight:700}
+.cls span{font-size:11px;color:var(--dim);line-height:1.4}
+.cls[aria-pressed="true"]{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c)}
+.cls[aria-pressed="true"] b{color:var(--c)}
+.cls:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:10px}
+.go.alt{background:transparent;color:var(--ink);border:1px solid var(--edge)}
+.ups{display:grid;gap:8px}
+.areas{display:grid;gap:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-family:var(--mono);font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid var(--edge);background:var(--stone-2);color:var(--ink);cursor:pointer}
+.chip[aria-pressed="true"]{border-color:var(--torch);color:var(--torch)}
+.chip:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.xpbar{width:46px;height:5px;align-self:center;background:var(--stone-2);border:1px solid var(--edge);border-radius:2px;overflow:hidden}
+.xpbar i{display:block;height:100%;background:var(--wisp);transition:width .2s}
+.res{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;font-variant-numeric:tabular-nums}
+.res div{display:grid;gap:2px}.res b{font-size:20px;font-family:var(--display)}
+.tag{font-size:10px;color:var(--dim);letter-spacing:.14em;text-transform:uppercase}
+@media (prefers-reduced-motion:reduce){.say,.bar i{transition:none}}
