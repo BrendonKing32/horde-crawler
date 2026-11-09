@@ -11,19 +11,25 @@ import { blocked, solidAt } from "./world";
  */
 export function hurt(n: number, raw = false) {
   const p = S.p;
+  if (!raw && p.dashT > 0) return;
+  if (!raw && p.guardT > 0) n *= 0.5;
   p.hp -= raw ? n : n * p.st.armor;
   if (raw) return;
   p.hurt = Math.min(1, p.hurt + n / 40);
   if (n >= 20) p.blink = 0.12;
 }
 
-const XP: Record<EnemyType, number> = { reaper: 15, lobber: 5, grunt: 3, biter: 1 };
-const POINTS: Record<EnemyType, number> = { reaper: 250, lobber: 25, grunt: 10, biter: 5 };
+const XP: Record<EnemyType, number> = { reaper: 15, lobber: 5, grunt: 3, biter: 1, boss: 80 };
+const POINTS: Record<EnemyType, number> = { reaper: 250, lobber: 25, grunt: 10, biter: 5, boss: 1000 };
 
 export function killEnemy(e: Enemy) {
   if (e.dead) return;
   e.dead = true;
   S.kills++;
+  if (e.type === "boss") {
+    S.bossDefeated = true;
+    say("The champion falls. The area exit is open.");
+  }
   // crypt: a third of grunts leave bones that rise again unless stomped
   if (e.type === "grunt" && S.area.style === "brick" && !e.risen && Math.random() < 0.35) S.bones.push({ x: e.x, y: e.y, t: 2.5 });
   gainXp(XP[e.type]);
@@ -64,21 +70,34 @@ export function usePotion() {
   if (p.potions <= 0) { say("No potions left."); return; }
   p.potions--;
   S.flash = reducedMotion() ? 0.2 : 0.45;
-  let n = 0, reaper = false;
-  for (const e of S.enemies) if (inView(e.x, e.y)) { if (e.type === "reaper") reaper = true; killEnemy(e); n++; }
+  let n = 0, reaper = false, bossKilled = false, bossHit = false;
+  for (const e of S.enemies) if (!e.dead && inView(e.x, e.y)) {
+    if (e.type === "reaper") reaper = true;
+    if (e.type === "boss") {
+      e.hp -= 25; e.hit = 0.12;
+      if (e.hp <= 0) { killEnemy(e); bossKilled = true; }
+      else bossHit = true;
+    } else killEnemy(e);
+    n++;
+  }
   S.bombs = S.bombs.filter((b) => !inView(b.tx, b.ty));
   S.balloons = S.balloons.filter((b) => !inView(b.x, b.y));
   S.clouds = S.clouds.filter((c) => !inView(c.x, c.y));
   for (const g of S.gens) if (g.alive && inView(g.x, g.y)) hitGen(g, 3);
   for (const c of S.coffins) if (c.alive && inView(c.x, c.y)) hitCoffin(c, 3);
   S.bones = S.bones.filter((b) => !inView(b.x, b.y));
-  say(reaper ? "Death is undone." : n ? `The room goes quiet. ${n} down.` : "The room goes quiet.");
+  if (!bossKilled) say(bossHit ? "The champion staggers." : reaper ? "Death is undone." : n ? `The room goes quiet. ${n} down.` : "The room goes quiet.");
 }
 
 /** A shot potion on the floor goes off in a smaller radius. */
 export function blast(x: number, y: number) {
   S.flash = reducedMotion() ? 0.12 : 0.25;
-  for (const e of S.enemies) if (Math.hypot(e.x - x, e.y - y) < 150) killEnemy(e);
+  for (const e of S.enemies) if (!e.dead && Math.hypot(e.x - x, e.y - y) < 150) {
+    if (e.type === "boss") {
+      e.hp -= 15; e.hit = 0.12;
+      if (e.hp <= 0) killEnemy(e);
+    } else killEnemy(e);
+  }
 }
 
 /** Spawn from a spawner onto a free neighbouring tile. Horde spawners send a biter pack every third spawn. */

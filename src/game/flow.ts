@@ -5,6 +5,7 @@ import { say } from "./narrator";
 import { S, newFloor, settings } from "./state";
 
 export function startRun() {
+  releaseTouch();
   newFloor();
   S.state = "play";
   $("ovStart").hidden = true;
@@ -25,11 +26,19 @@ export function nextFloor() {
   say(S.depth % 5 === 1 ? `Floor ${S.depth}: ${S.area.name}.` : `Floor ${S.depth}. Deeper and hungrier.`);
 }
 
+export function bossClear() {
+  S.state = "bossclear";
+  releaseTouch();
+  $("ovBoss").hidden = false;
+  $("bossContinue").focus();
+}
+
 export function endRun(won: boolean) {
   S.state = "over";
   releaseTouch();
-  $("endTag").textContent = won ? "Floor cleared" : "Run over";
-  $("endTitle").textContent = won ? "You made it out." : "You ran out of health.";
+  $("ovBoss").hidden = true;
+  $("endTag").textContent = won ? "Area conquered" : "Run over";
+  $("endTitle").textContent = won ? "You defeated the champion." : "You ran out of health.";
   $("rScore").textContent = String(S.p.score);
   $("rTime").textContent = fmtTime(S.time);
   $("rKills").textContent = String(S.kills);
@@ -56,4 +65,6 @@ export function bindScreens() {
   $("goClass").addEventListener("click", () => { $("ovEnd").hidden = true; $("ovStart").hidden = false; $("goStart").focus(); });
   $("goStart").addEventListener("click", startRun);
   $("goAgain").addEventListener("click", startRun);
+  $("bossContinue").addEventListener("click", () => { $("ovBoss").hidden = true; nextFloor(); });
+  $("bossEnd").addEventListener("click", () => endRun(true));
 }

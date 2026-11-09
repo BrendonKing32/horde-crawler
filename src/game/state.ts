@@ -79,6 +79,7 @@ export function newFloor(carry?: Carry): World {
       potions: carry ? carry.potions : 1, score: carry ? carry.score : 0,
       level: carry ? carry.level : 1, xp: carry ? carry.xp : 0, ups: carry ? carry.ups : {},
       hurt: 0, blink: 0, slowF: 1, cloudT: 0, poolT: 0,
+      abilityCd: 0, guardT: 0, dashT: 0,
     },
     enemies: reapers.map((r) => ({ type: "reaper" as const, r: 12, hp: Infinity, speed: 72, x: r.x, y: r.y, cd: 0, side: 1, dead: false, fed: 0, awake: false })),
     gens, genAt: new Map(gens.map((g) => [key(g.tx, g.ty), g])),
@@ -89,6 +90,30 @@ export function newFloor(carry?: Carry): World {
     time: carry ? carry.time : 0, drain: 0, flash: 0,
     kills: carry ? carry.kills : 0, smashed: carry ? carry.smashed : 0, pending: carry ? carry.pending : 0,
     said: {}, lockSay: 0, reaperTip: 0, rockT: 4, lightsT: 10, dark: false, flick: false,
+    bossFloor: depth % 5 === 0, bossDefeated: false,
   };
+  if (S.bossFloor && exit) {
+    const tx = Math.floor(exit.x / T), ty = Math.floor(exit.y / T);
+    const candidates: [number, number][] = [];
+    for (let radius = 1; radius <= 3; radius++)
+      for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++)
+        if (Math.max(Math.abs(dx), Math.abs(dy)) === radius) candidates.push([tx + dx, ty + dy]);
+    const [bx, by] = candidates.find(([x, y]) =>
+      grid[y]?.[x] === "." &&
+      [-1, 0, 1].every((dy) => [-1, 0, 1].every((dx) =>
+        grid[y + dy]?.[x + dx] === "." &&
+        !gens.some((g) => g.tx === x + dx && g.ty === y + dy) &&
+        !coffins.some((c) => c.tx === x + dx && c.ty === y + dy) &&
+        !traps.some((t) => t.tx === x + dx && t.ty === y + dy) &&
+        !pools.has((y + dy) * cols + x + dx),
+      )) &&
+      !pickups.some((k) => Math.floor(k.x / T) === x && Math.floor(k.y / T) === y),
+    ) ?? [tx, ty];
+    const hp = 90 + Math.floor(depth / 5) * 20;
+    S.enemies.push({
+      type: "boss", r: 17, hp, maxHp: hp, speed: 58, x: bx * T + T / 2, y: by * T + T / 2,
+      cd: 0, side: 1, dead: false, chargeCd: 2.2,
+    });
+  }
   return S;
 }

@@ -19,16 +19,18 @@
       <span class="stat key"><span class="lbl">Keys</span><b id="ky">0</b></span>
       <span class="stat pot"><span class="lbl">Potions</span><b id="pt">1</b></span>
       <span class="stat"><span class="lbl">Spawners</span><b id="gn">8</b></span>
+      <span class="stat"><span class="lbl">Ability</span><b id="ab">Bulwark ready</b></span>
       <span class="stat"><span class="lbl">Time</span><b id="tm">0:00</b></span>
     </div>
-    <span class="keyhint">Move <kbd>WASD</kbd> · Fire <kbd>Space</kbd> · Potion <kbd>K</kbd></span>
+    <span class="keyhint">Move <kbd>WASD</kbd> · Aim with mouse · Fire <kbd>Space</kbd> · Ability <kbd>E</kbd> · Potion <kbd>K</kbd></span>
   </div>
   <div class="stage" id="stage">
     <canvas id="cv"></canvas>
     <div class="say" id="say"></div>
-    <div class="joyhint">Drag here to move</div>
+    <div class="joyhint">Drag left to move · right to aim</div>
     <div class="pad">
       <button class="b-pot" id="bPot" type="button" aria-label="Use potion">POT</button>
+      <button class="b-ability" id="bAbility" type="button" aria-label="Use class ability">E</button>
       <button class="b-fire" id="bFire" type="button" aria-label="Fire">FIRE</button>
     </div>
     <div class="ov" id="ovStart">
@@ -37,8 +39,8 @@
         <h1>Dungeon Horde Crawler</h1>
         <p>Your health drains every second. Smash spawners, eat food, find keys and levers, and reach the exit to go deeper. Kills earn XP for upgrades. Only a potion stops the reaper, and don't shoot the food.</p>
         <div class="classes" role="group" aria-label="Choose a class">
-          <button class="cls" type="button" data-cls="warden" aria-pressed="true" style="--c:var(--torch)"><b>Warden</b><span>Heavy armor, hard-hitting shots. Slow on his feet. Press 1.</span></button>
-          <button class="cls" type="button" data-cls="ranger" aria-pressed="false" style="--c:var(--ranger)"><b>Ranger</b><span>Fast, rapid long-range fire. Thin armor, less health. Press 2.</span></button>
+          <button class="cls" type="button" data-cls="warden" aria-pressed="true" style="--c:var(--torch)"><b>Warden</b><span>Heavy armor, hard-hitting shots. Bulwark halves monster damage briefly. Press 1.</span></button>
+          <button class="cls" type="button" data-cls="ranger" aria-pressed="false" style="--c:var(--ranger)"><b>Ranger</b><span>Fast, rapid long-range fire. Quickstep dashes through danger. Press 2.</span></button>
         </div>
         <div class="areas" role="group" aria-label="Starting area for testing">
           <span class="lbl">Testing: start in</span>
@@ -52,7 +54,9 @@
         </div>
         <dl class="ctl">
           <dt>Move</dt><dd><kbd>WASD</kbd> or arrows · drag left side</dd>
-          <dt>Fire</dt><dd><kbd>Space</kbd> or <kbd>J</kbd> · FIRE button</dd>
+          <dt>Aim</dt><dd>Mouse pointer · drag right side on touch</dd>
+          <dt>Fire</dt><dd><kbd>Space</kbd> or <kbd>J</kbd> · mouse button · FIRE button</dd>
+          <dt>Ability</dt><dd><kbd>E</kbd> · ability button</dd>
           <dt>Potion</dt><dd><kbd>K</kbd> · POT button (clears the screen)</dd>
         </dl>
         <button class="go" id="goStart" type="button">Start run</button>
@@ -63,6 +67,14 @@
         <span class="tag" id="lvTag">Level 2</span>
         <h2>Choose an upgrade</h2>
         <div class="ups" id="ups"></div>
+      </div>
+    </div>
+    <div class="ov" id="ovBoss" hidden>
+      <div class="card">
+        <span class="tag">Champion defeated</span>
+        <h2>Area conquered</h2>
+        <p>You can claim this victory and end the run, or continue into the next area.</p>
+        <div class="row"><button class="go" id="bossContinue" type="button">Continue deeper</button><button class="go alt" id="bossEnd" type="button">End run</button></div>
       </div>
     </div>
     <div class="ov" id="ovEnd" hidden>

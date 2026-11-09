@@ -2,7 +2,7 @@ import { $, fmtTime } from "./dom";
 import { xpNeed } from "./progression";
 import { S } from "./state";
 
-const ids = ["lv", "xpb", "fl", "hpv", "hpb", "sc", "ky", "pt", "gn", "tm"] as const;
+const ids = ["lv", "xpb", "fl", "hpv", "hpb", "sc", "ky", "pt", "gn", "tm", "ab"] as const;
 type HudId = (typeof ids)[number];
 let el: Record<HudId, HTMLElement> | null = null;
 const last: Record<string, string> = {};
@@ -29,4 +29,13 @@ export function hud() {
   set("pt", String(p.potions));
   set("gn", String(S.gens.filter((g) => g.alive).length));
   set("tm", fmtTime(S.time));
+  const ability = p.cls.color === "torch" ? "Bulwark" : "Quickstep";
+  set("ab", p.abilityCd > 0 ? `${ability} ${p.abilityCd.toFixed(1)}s` : `${ability} ready`);
+  const button = $<HTMLButtonElement>("bAbility");
+  const label = p.cls.color === "torch" ? "GUARD" : "DASH";
+  if (last.abilityButton !== label) { button.textContent = label; last.abilityButton = label; }
+  if (button.getAttribute("aria-label") !== `Use ${ability}`) button.setAttribute("aria-label", `Use ${ability}`);
+  const cooling = p.abilityCd > 0;
+  if (button.disabled !== cooling) button.disabled = cooling;
+  if (button.classList.contains("cooldown") !== cooling) button.classList.toggle("cooldown", cooling);
 }
