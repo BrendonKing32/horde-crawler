@@ -271,3 +271,33 @@ export function fairgrounds(k: LayoutKit): Room[] | null {
   }
   return rooms;
 }
+
+/** Long, narrow library rooms connected by aisles. */
+export function archive(k: LayoutKit): Room[] {
+  const rooms = k.placeRooms(13, 5, 11, 4, 6);
+  rooms.forEach(k.fillRoom);
+  k.mst(rooms, (a, b) => lCorridor(k, a, b));
+  return rooms;
+}
+
+/** Machinery halls packed into a partitioned factory. */
+export function foundry(k: LayoutKit): Room[] {
+  return plagueWard(k);
+}
+
+/** Root tunnels and irregular fungal chambers. */
+export function hollow(k: LayoutKit): Room[] {
+  return caverns(k);
+}
+
+/** Chamfered observatory chambers joined by narrow bridges. */
+export function observatory(k: LayoutKit): Room[] {
+  const rooms = k.placeRooms(11, 6, 9, 6, 9);
+  for (const r of rooms) {
+    k.fillRoom(r);
+    for (const [x, y] of [[r.x, r.y], [r.x + r.w - 1, r.y], [r.x, r.y + r.h - 1], [r.x + r.w - 1, r.y + r.h - 1]])
+      k.g[y][x] = "#";
+  }
+  k.mst(rooms, (a, b) => lCorridor(k, a, b));
+  return rooms;
+}

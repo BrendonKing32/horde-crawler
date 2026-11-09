@@ -1,21 +1,45 @@
 /** Area hazards and thrown projectiles. */
 import { C, T } from "./constants";
+import { highTide, inAstralBeam } from "./area-mechanics";
 import { hurt, killEnemy } from "./actions";
 import { pop, sayOnce } from "./narrator";
 import { S } from "./state";
-import { blocked, solidAt } from "./world";
+import { blocked, move, solidAt } from "./world";
 
 export function updateHazards(dt: number) {
   bombs(dt);
+  enemyShots(dt);
   const inCloud = clouds(dt);
   const onPool = pools(dt);
-  S.p.slowF = inCloud ? 0.55 : onPool ? 0.65 : 1;
+  const flooded = S.area.style === "archive" && highTide(S.time);
+  S.p.slowF = inCloud ? 0.55 : onPool || flooded ? 0.65 : 1;
+  if (flooded) sayOnce("tide", "The water is rising. The drowned move faster.");
   poison(dt, inCloud);
   lightsOut(dt);
   balloons(dt);
   caveIns(dt);
   spikes();
   bones(dt);
+  drowned(dt, flooded);
+  conveyors(dt);
+  spores();
+  astralBeam();
+}
+
+function enemyShots(dt: number) {
+  const remaining = [];
+  for (const shot of S.enemyShots) {
+    const travel = Math.min(dt, shot.life), steps = Math.max(1, Math.ceil(Math.hypot(shot.vx, shot.vy) * travel / 8));
+    let hit = false;
+    for (let i = 0; i < steps; i++) {
+      shot.x += shot.vx * travel / steps; shot.y += shot.vy * travel / steps;
+      if (solidAt(Math.floor(shot.x / T), Math.floor(shot.y / T), true)) { hit = true; break; }
+      if (Math.hypot(shot.x - S.p.x, shot.y - S.p.y) < S.p.r + 3) { hurt(14); hit = true; break; }
+    }
+    shot.life -= dt;
+    if (!hit && shot.life > 0) remaining.push(shot);
+  }
+  S.enemyShots = remaining;
 }
 
 /** Lobber bombs land after 1.15s; in the plague ward they leave a poison cloud. */
@@ -122,13 +146,70 @@ function spikes() {
     if (tr.lastId !== id) { tr.lastId = id; tr.hitE.clear(); tr.hitP = false; }
     if (!tr.up) continue;
     if (!tr.hitP && Math.abs(p.x - tr.x) < 16 && Math.abs(p.y - tr.y) < 16) {
-      tr.hitP = true; hurt(12);
-      sayOnce("trap", "Spike traps. Time your crossing.");
+      tr.hitP = true; hurt(tr.kind === "press" ? 18 : 12);
+      if (tr.kind === "press") sayOnce("press", "Crushing presses. Watch the warning lights.");
+      else sayOnce("trap", "Spike traps. Time your crossing.");
     }
+
     for (const e of S.enemies)
       if (!e.dead && e.type !== "reaper" && !tr.hitE.has(e) && Math.abs(e.x - tr.x) < 16 && Math.abs(e.y - tr.y) < 16) {
         tr.hitE.add(e); e.hp -= 2; e.hit = 0.1; if (e.hp <= 0) killEnemy(e);
       }
+  }
+}
+
+function drowned(dt: number, flooded: boolean) {
+  if (!flooded) return;
+  S.shelfT -= dt;
+  if (S.shelfT > 0) return;
+  S.shelfT = 7;
+  if (S.enemies.length >= 130) return;
+  const px = Math.floor(S.p.x / T), py = Math.floor(S.p.y / T);
+  const candidates: [number, number][] = [];
+  for (let y = py - 7; y <= py + 7; y++) for (let x = px - 7; x <= px + 7; x++) {
+    const distance = Math.hypot(x - px, y - py);
+    if (distance < 4 || distance > 7 || solidAt(x, y)) continue;
+    if (![[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => S.grid[y + dy]?.[x + dx] === "#")) continue;
+    candidates.push([x, y]);
+  }
+  if (!candidates.length) return;
+  const [x, y] = candidates[Math.floor(Math.random() * candidates.length)];
+  S.enemies.push({ type: "grunt", r: 10, hp: 2, speed: 78, x: (x + 0.5) * T, y: (y + 0.5) * T, cd: 0.5, side: 1, dead: false });
+  S.booms.push({ x: (x + 0.5) * T, y: (y + 0.5) * T, t: 0.35 });
+  sayOnce("drowned", "The drowned are emerging from the shelves.");
+}
+
+function conveyors(dt: number) {
+  if (!S.conveyors.size) return;
+  for (const body of [S.p, ...S.enemies]) {
+    if ("dead" in body && body.dead) continue;
+    const tx = Math.floor(body.x / T), ty = Math.floor(body.y / T);
+    if (!S.conveyors.has(ty * S.cols + tx)) continue;
+    const direction = (Math.floor(S.time / 4) + ty) % 2 ? -1 : 1;
+    move(body, direction * 55 * dt, 0);
+    if (body === S.p) sayOnce("conveyor", "Conveyors change direction. Keep moving.");
+  }
+}
+
+function spores() {
+  if (!S.spores.size) return;
+  for (const body of [S.p, ...S.enemies]) {
+    if ("dead" in body && body.dead) continue;
+    const tx = Math.floor(body.x / T), ty = Math.floor(body.y / T), key = ty * S.cols + tx;
+    if (!S.spores.delete(key)) continue;
+    S.clouds.push({ x: tx * T + T / 2, y: ty * T + T / 2, t: 3, r: 32, seed: Math.random() * 9 });
+    sayOnce("spores", "Spores burst when disturbed. Enemies spread them.");
+  }
+}
+
+function astralBeam() {
+  if (S.area.style !== "observatory") return;
+  for (const key of S.hidden) {
+    const x = key % S.cols, y = Math.floor(key / S.cols);
+    if (!inAstralBeam((x + 0.5) * T, (y + 0.5) * T, S.mw, S.mh, S.time)) continue;
+    S.grid[y][x] = ".";
+    S.hidden.delete(key);
+    sayOnce("astral", "The beam reveals hidden passages and quickens monsters.");
   }
 }
 

@@ -1,4 +1,4 @@
-import { LEVERS, areaOf, buildFloor } from "../gen/generator";
+import { AREA, LEVERS, areaOf, buildFloor } from "../gen/generator";
 import { AREAS, CLASSES, T, type ClassId } from "./constants";
 import type { Carry, Coffin, Lever, Pickup, PickupType, Spawner, Trap, Vec, World } from "./types";
 
@@ -28,6 +28,7 @@ export function newFloor(carry?: Carry): World {
 
   const grid: string[][] = [], gens: Spawner[] = [], pickups: Pickup[] = [], reapers: Vec[] = [];
   const levers: Lever[] = [], coffins: Coffin[] = [], traps: Trap[] = [], pools = new Set<number>();
+  const conveyors = new Set<number>(), spores = new Set<number>(), hidden = new Set<number>();
   let start: Vec = { x: 48, y: 48 }, exit: Vec | null = null;
   for (let y = 0; y < rows; y++) {
     const row: string[] = [], src = (map[y] || "").padEnd(cols, ".");
@@ -38,13 +39,18 @@ export function newFloor(carry?: Carry): World {
       if (c === "P") { start = { x: cx, y: cy }; c = "."; }
       else if (c === "G" || c === "L") {
         const den = c === "L", tier = den ? 2 : 1 + ((x * 7 + y * 3) % 3);
-        gens.push({ tx: x, ty: y, x: cx, y: cy, kind: den ? "lobber" : "horde", tier, hp: tier * 3, max: tier * 3, t: 0.5 + Math.random() * 2, alive: true, hit: 0, n: 0 });
+        const delay = (0.5 + Math.random() * 2) * (areaOf(depth) === AREA.DESERT ? 0.45 : 1);
+        gens.push({ tx: x, ty: y, x: cx, y: cy, kind: den ? "lobber" : "horde", tier, hp: tier * 3, max: tier * 3, t: delay, alive: true, hit: 0, n: 0 });
         c = ".";
       }
       else if (LEVERS.includes(c)) { levers.push({ id: LEVERS.indexOf(c), x: cx, y: cy, on: false }); c = "."; }
       else if (c === "S") { coffins.push({ tx: x, ty: y, x: cx, y: cy, hp: 3, alive: true, hit: 0 }); c = "."; }
       else if (c === "^") { traps.push({ tx: x, ty: y, x: cx, y: cy, hitE: new Set() }); c = "."; }
       else if (c === "~") { pools.add(key(x, y)); c = "."; }
+      else if (c === "V") { conveyors.add(key(x, y)); c = "."; }
+      else if (c === "M") { traps.push({ tx: x, ty: y, x: cx, y: cy, kind: "press", hitE: new Set() }); c = "."; }
+      else if (c === "U") { spores.add(key(x, y)); c = "."; }
+      else if (c === "H") { hidden.add(key(x, y)); }
       else if ("FOK$".includes(c)) { pickups.push({ type: c as PickupType, x: cx, y: cy, alive: true }); c = "."; }
       else if (c === "X") { exit = { x: cx, y: cy }; c = "."; }
       else if (c === "R") { reapers.push({ x: cx, y: cy }); c = "."; }
@@ -84,12 +90,12 @@ export function newFloor(carry?: Carry): World {
     enemies: reapers.map((r) => ({ type: "reaper" as const, r: 12, hp: Infinity, speed: 72, x: r.x, y: r.y, cd: 0, side: 1, dead: false, fed: 0, awake: false })),
     gens, genAt: new Map(gens.map((g) => [key(g.tx, g.ty), g])),
     pickups, levers, coffins, coffinAt: new Map(coffins.map((k) => [key(k.tx, k.ty), k])),
-    traps, pools, tentWall, tentFloor, exit,
-    shots: [], bombs: [], balloons: [], clouds: [], rocks: [], bones: [], pops: [], booms: [], opening: [],
+    traps, pools, conveyors, spores, hidden, tentWall, tentFloor, exit,
+    shots: [], enemyShots: [], bombs: [], balloons: [], clouds: [], rocks: [], bones: [], pops: [], booms: [], opening: [],
     cam: null, state: "ready",
     time: carry ? carry.time : 0, drain: 0, flash: 0,
     kills: carry ? carry.kills : 0, smashed: carry ? carry.smashed : 0, pending: carry ? carry.pending : 0,
-    said: {}, lockSay: 0, reaperTip: 0, rockT: 4, lightsT: 10, dark: false, flick: false,
+    said: {}, lockSay: 0, reaperTip: 0, rockT: 4, shelfT: 5, lightsT: 10, dark: false, flick: false,
     bossFloor: depth % 5 === 0, bossDefeated: false,
   };
   if (S.bossFloor && exit) {

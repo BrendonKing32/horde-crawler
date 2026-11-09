@@ -5,7 +5,7 @@
  *   D  locked door     K  key             G  horde spawner    L  lobber den
  *   R  reaper          F  food            O  potion           $  treasure
  *   a b c  gates       x y z  their levers (gate "a" opens with lever "x", etc.)
- *   S  coffin (crypt)  ^  spike trap (catacombs)  ~  bile pool (plague ward)
+ *   S  coffin  ^  spike trap  ~  bile  V  conveyor  M  press  U  spores  H  hidden passage  Q  quicksand
  *
  * Guarantees (enforced here, verified by tests/generator.test.ts):
  * - the exit sits in a locked vault whose key is reachable without passing that vault
@@ -13,17 +13,17 @@
  * - every region has food; every reaper has a potion at or before its own region
  */
 import { makeRand } from "./rng";
-import { H, W, caverns, catacombs, crypt, fairgrounds, makeKit, plagueWard, type Pt, type Room } from "./layouts";
+import { H, W, archive, caverns, catacombs, crypt, fairgrounds, foundry, hollow, makeKit, observatory, plagueWard, type Pt, type Room } from "./layouts";
 
 export const GATES = "abc";
 export const LEVERS = "xyz";
 
 /** Area ids, in the order they appear every five floors. */
-export const AREA = { CRYPT: 0, CAVERNS: 1, CATACOMBS: 2, PLAGUE: 3, CARNIVAL: 4 } as const;
+export const AREA = { CRYPT: 0, CAVERNS: 1, CATACOMBS: 2, PLAGUE: 3, CARNIVAL: 4, ARCHIVE: 5, FOUNDRY: 6, HOLLOW: 7, OBSERVATORY: 8, DESERT: 9 } as const;
 export type AreaId = (typeof AREA)[keyof typeof AREA];
-export const AREA_COUNT = 5;
+export const AREA_COUNT = 10;
 
-/** Floors 1-5 crypt, 6-10 caverns, 11-15 catacombs, 16-20 plague ward, 21-25 carnival, then repeat. */
+/** Areas change every five floors and repeat after floor 50. */
 export const areaOf = (depth: number): AreaId => (Math.floor((depth - 1) / 5) % AREA_COUNT) as AreaId;
 
 export type Tent = [x: number, y: number, w: number, h: number];
@@ -46,7 +46,7 @@ export function generate(seed: number, depth: number, area: AreaId = AREA.CRYPT)
   const rand = makeRand(seed);
   const kit = makeKit(rand);
   const { g } = kit;
-  const layout = [crypt, caverns, catacombs, plagueWard, fairgrounds][area];
+  const layout = [crypt, caverns, catacombs, plagueWard, fairgrounds, archive, foundry, hollow, observatory, fairgrounds][area];
   const rooms = layout(kit);
   if (!rooms || rooms.length < 6) return null;
 
@@ -221,8 +221,37 @@ export function generate(seed: number, depth: number, area: AreaId = AREA.CRYPT)
       for (let y = cy - 1; y <= cy + 1; y++) for (let x = cx - 2; x <= cx + 2; x++)
         if (g[y][x] === "." && inRoom(x, y) && rand.next() < 0.75) g[y][x] = "~";
     }
+  if (area === AREA.FOUNDRY) {
+    if (!spread("V", 24, pool, 0).length || !spread("M", 8, pool, 0).length) return null;
+  }
+  if (area === AREA.HOLLOW && !spread("U", 18, pool, 0).length) return null;
+  if (area === AREA.OBSERVATORY) {
+    const candidates: Pt[] = [];
+    for (let y = 2; y < H - 2; y++) for (let x = 2; x < W - 2; x++) {
+      if (g[y][x] !== "#") continue;
+      const neighbours = N4.map(([dx, dy]): Pt => [x + dx, y + dy]);
+      const floors = neighbours.filter(([nx, ny]) => g[ny][nx] === ".");
+      if (floors.length < 2 || floors.some(([nx, ny]) => region(nx, ny) === 99)) continue;
+      const stage = region(floors[0][0], floors[0][1]);
+      if (floors.some(([nx, ny]) => region(nx, ny) !== stage)) continue;
+      if (neighbours.some(([nx, ny]) => g[ny][nx] !== "#" && g[ny][nx] !== ".")) continue;
+      candidates.push([x, y]);
+    }
+    let placed = 0;
+    for (const [x, y] of rand.shuffle(candidates)) {
+      if (N4.some(([dx, dy]) => g[y + dy][x + dx] === "H")) continue;
+      g[y][x] = "H";
+      if (++placed === 4) break;
+    }
+    if (!placed) return null;
+  }
+
+  // Keep the validated movement topology, but make desert barriers transparent to shots.
+  if (area === AREA.DESERT)
+    for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++)
+      if (g[y][x] === "#") g[y][x] = "Q";
 
   const out: FloorMap = g.map((r) => r.join(""));
-  out.tents = rooms.filter((r) => r.tent).map((r): Tent => [r.x, r.y, r.w, r.h]);
+  out.tents = area === AREA.CARNIVAL ? rooms.filter((r) => r.tent).map((r): Tent => [r.x, r.y, r.w, r.h]) : [];
   return out;
 }

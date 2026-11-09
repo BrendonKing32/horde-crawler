@@ -1,6 +1,8 @@
 import { GATES } from "../gen/generator";
 import { BULBS, C, DISPLAY_FONT, PAIR, T, hash, reducedMotion } from "./constants";
 import { input } from "./input";
+import { blackoutRadii } from "./lighting";
+import { highTide, inAstralBeam } from "./area-mechanics";
 import { S } from "./state";
 import type { Enemy, Player } from "./types";
 
@@ -37,6 +39,7 @@ export function render() {
   ctx.setTransform(z, 0, 0, z, -camX * z, -camY * z);
 
   drawTiles(camX, camY, vw, vh, now);
+  drawAstralBeam();
   drawFloorObjects(now);
   drawEnemies(now);
   drawProjectiles(now);
@@ -65,7 +68,7 @@ function drawTiles(camX: number, camY: number, vw: number, vh: number, now: numb
   const y0 = Math.max(0, Math.floor(camY / T)), y1 = Math.min(S.rows - 1, Math.floor((camY + vh) / T));
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
     const c = S.grid[y][x];
-    if (c === "#") drawWall(x, y, now);
+    if (c === "#" || c === "H") drawWall(x, y, now);
     else drawFloor(x, y, c, now);
   }
   for (const o of S.opening) drawGate(o.tx * T, o.ty * T, PAIR[o.id], o.t / 0.6);
@@ -121,18 +124,56 @@ function drawWall(x: number, y: number, now: number) {
         ctx.fillStyle = "#141010"; ctx.fillRect(px + 13.5, py + 17, 2, 2); ctx.fillRect(px + 16.5, py + 17, 2, 2);
       }
       break;
+    case "archive":
+      ctx.fillStyle = "#182f38"; ctx.fillRect(px + 3, py + 6, T - 6, 20);
+      ctx.fillStyle = B.hi;
+      for (let i = 0; i < 4; i++) ctx.fillRect(px + 5 + i * 6, py + 8, 3, 14);
+      break;
+    case "foundry":
+      ctx.fillStyle = "rgba(0,0,0,.4)"; ctx.fillRect(px, py + 14, T, 4);
+      ctx.fillStyle = B.hi; ctx.fillRect(px + 5, py + 6, 3, 3); ctx.fillRect(px + 24, py + 23, 3, 3);
+      break;
+    case "hollow":
+      ctx.strokeStyle = B.hi; ctx.lineWidth = 3; ctx.beginPath();
+      ctx.moveTo(px + 3, py); ctx.lineTo(px + 13, py + 15); ctx.lineTo(px + 8, py + T); ctx.stroke();
+      break;
+    case "observatory":
+      ctx.strokeStyle = B.hi; ctx.lineWidth = 1; ctx.strokeRect(px + 4, py + 4, T - 8, T - 8);
+      ctx.fillStyle = B.fleck; ctx.fillRect(px + 15, py + 15, 2, 2);
+      break;
   }
 }
 
 function drawFloor(x: number, y: number, c: string, now: number) {
   const B = S.area, h = hash(x, y), px = x * T, py = y * T, k = y * S.cols + x;
+  if (c === "Q") {
+    ctx.fillStyle = (x + y) % 2 ? "#9b713e" : "#a87c45"; ctx.fillRect(px, py, T, T);
+    ctx.strokeStyle = "rgba(241,203,137,.45)"; ctx.lineWidth = 1.5;
+    for (let i = 0; i < 2; i++) {
+      const yy = py + 9 + i * 13 + (reduce ? 0 : Math.sin(now * 2 + x + y) * 1.5);
+      ctx.beginPath(); ctx.moveTo(px + 4, yy); ctx.quadraticCurveTo(px + 16, yy + 4, px + 28, yy); ctx.stroke();
+    }
+    return;
+  }
   ctx.fillStyle = (x + y) % 2 ? B.a : B.b;
   ctx.fillRect(px, py, T, T);
   if (S.tentFloor.has(k)) { ctx.fillStyle = (x + y) % 2 ? "#241519" : "#28171d"; ctx.fillRect(px, py, T, T); }
+  if (B.style === "archive" && highTide(S.time)) { ctx.fillStyle = "rgba(49,151,177,.32)"; ctx.fillRect(px, py, T, T); }
+  if (S.conveyors.has(k)) {
+    const dir = (Math.floor(S.time / 4) + y) % 2 ? -1 : 1;
+    ctx.fillStyle = "#71563c"; ctx.fillRect(px + 2, py + 4, T - 4, T - 8);
+    ctx.fillStyle = "#e0ae64";
+    ctx.beginPath(); ctx.moveTo(px + 16 + dir * 7, py + 16); ctx.lineTo(px + 16 - dir * 5, py + 9); ctx.lineTo(px + 16 - dir * 5, py + 23); ctx.fill();
+  }
+  if (S.spores.has(k)) {
+    ctx.fillStyle = "#b0d875"; ctx.beginPath(); ctx.arc(px + 16, py + 16, 7, 0, 7); ctx.fill();
+    ctx.fillStyle = "#3e5a2a"; ctx.fillRect(px + 13, py + 13, 3, 3); ctx.fillRect(px + 18, py + 17, 3, 3);
+  }
   if (S.pools.has(k)) {
     ctx.fillStyle = "rgba(110,150,36,.55)"; ctx.fillRect(px, py, T, T);
     if (!reduce && (h + Math.floor(now * 2)) % 7 === 0) { ctx.fillStyle = "rgba(190,220,110,.65)"; ctx.beginPath(); ctx.arc(px + 8 + (h % 16), py + 8 + ((h >> 4) % 16), 2.5, 0, 7); ctx.fill(); }
   }
+
   // floor flecks per area
   ctx.fillStyle = B.fleck;
   if (B.style === "rock" && h % 9 === 0) { ctx.globalAlpha = 0.35; ctx.fillRect(px + ((h >> 3) % 26), py + ((h >> 7) % 26), 3, 2); }
@@ -146,6 +187,13 @@ function drawFloor(x: number, y: number, c: string, now: number) {
     for (let i = 0; i < 4; i++) ctx.fillRect(px + 5 + i * 7, py + 3, 3, T - 6);
     ctx.fillRect(px + 3, py + T / 2 - 2, T - 6, 4);
   } else if (GATES.includes(c)) drawGate(px, py, PAIR[GATES.indexOf(c)], 1);
+}
+
+function drawAstralBeam() {
+  if (S.area.style !== "observatory") return;
+  const x = S.mw / 2, y = S.mh / 2, angle = S.time * 0.35;
+  ctx.strokeStyle = "rgba(190,180,255,.22)"; ctx.lineWidth = T * 1.5;
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(angle) * Math.hypot(S.mw, S.mh), y + Math.sin(angle) * Math.hypot(S.mw, S.mh)); ctx.stroke();
 }
 
 /** Gate bars; k < 1 while sliding open. */
@@ -188,6 +236,12 @@ function drawFloorObjects(now: number) {
   }
   for (const tr of S.traps) {
     const px = tr.tx * T, py = tr.ty * T;
+    if (tr.kind === "press") {
+      ctx.fillStyle = tr.up ? "#d67236" : tr.warn ? "#ffcc66" : "#4f4033";
+      ctx.fillRect(px + 3, py + 3, T - 6, T - 6);
+      ctx.strokeStyle = "#e8b46b"; ctx.lineWidth = 2; ctx.strokeRect(px + 7, py + 7, T - 14, T - 14);
+      continue;
+    }
     ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.fillRect(px + 3, py + 3, T - 6, T - 6);
     for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
       const sx = px + 8 + i * 8, sy = py + 8 + j * 8;
@@ -237,6 +291,9 @@ function drawFloorObjects(now: number) {
 function drawEnemies(now: number) {
   const p = S.p;
   for (const e of S.enemies) {
+    if (S.area.style === "observatory" && inAstralBeam(e.x, e.y, S.mw, S.mh, S.time)) {
+      ctx.strokeStyle = "#c5bcff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 5, 0, 7); ctx.stroke();
+    }
     const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy) || 1;
     if (e.type === "boss") drawBoss(e, now);
     else if (e.type === "reaper") drawReaper(e, dx / d, now);
@@ -245,7 +302,14 @@ function drawEnemies(now: number) {
       ctx.fillStyle = "#47392b"; ctx.beginPath(); ctx.ellipse(e.x, e.y + 2, 9, 5, 0, 0, 7); ctx.fill();
       ctx.fillStyle = "#8a7a52"; ctx.fillRect(e.x - 5 + j, e.y - 1, 2, 2); ctx.fillRect(e.x + 3 - j, e.y, 2, 2);
     } else if (e.type === "biter") drawBiter(e, dx / d, dy / d, now);
-    else if (e.type === "lobber") {
+    else if (e.type === "archer") {
+      ctx.fillStyle = (e.hit || 0) > 0 ? C.ink : "#dfb86e";
+      ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, 7); ctx.fill();
+      ctx.strokeStyle = "#513321"; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = "#513321"; ctx.fillRect(e.x - 6, e.y - 3, 12, 3);
+      ctx.strokeStyle = "#f4d395"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(e.x + dx / d * 6, e.y + dy / d * 6, 8, Math.atan2(dy, dx) - 1.1, Math.atan2(dy, dx) + 1.1); ctx.stroke();
+    } else if (e.type === "lobber") {
       const lift = (e.wind || 0) > 0 ? -5 : 0, ux = dx / d, uy = dy / d;
       ctx.fillStyle = "#3b2f5c"; ctx.beginPath(); ctx.arc(e.x - ux * 7, e.y - uy * 7 - 2, 6.5, 0, 7); ctx.fill();
       ctx.fillStyle = (e.hit || 0) > 0 ? C.ink : C.wisp; ctx.beginPath(); ctx.ellipse(e.x, e.y + 1, e.r, e.r - 2, 0, 0, 7); ctx.fill();
@@ -316,6 +380,11 @@ function drawProjectiles(now: number) {
     ctx.beginPath(); ctx.moveTo(s.x - s.vx * 0.025, s.y - s.vy * 0.025); ctx.lineTo(s.x, s.y); ctx.stroke();
     ctx.fillStyle = C.torch; ctx.beginPath(); ctx.arc(s.x, s.y, 3.2, 0, 7); ctx.fill();
   }
+  for (const s of S.enemyShots) {
+    ctx.strokeStyle = "#f4d395"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(s.x - s.vx * 0.04, s.y - s.vy * 0.04); ctx.lineTo(s.x, s.y); ctx.stroke();
+    ctx.fillStyle = "#e46046"; ctx.beginPath(); ctx.arc(s.x, s.y, 3, 0, 7); ctx.fill();
+  }
   for (const b of S.bombs) {
     const u = b.t / b.dur;
     ctx.fillStyle = `rgba(214,67,91,${0.06 + u * 0.16})`; ctx.beginPath(); ctx.arc(b.tx, b.ty, 34, 0, 7); ctx.fill();
@@ -373,12 +442,15 @@ function drawScreenOverlays(camX: number, camY: number, now: number) {
   const p = S.p;
   // torchlight: shrinks with health; lights-out shrinks it hard
   const sx = (p.x - camX) * zoom, sy = (p.y - camY) * zoom, R = Math.max(cw, ch);
-  let light = (0.22 + 0.38 * Math.min(1, Math.max(0, p.hp) / p.maxHp)) * (S.dark ? 0.38 : 1);
+  let light = 0.22 + 0.38 * Math.min(1, Math.max(0, p.hp) / p.maxHp);
   if (S.flick && !reduce && Math.floor(now * 10) % 2) light *= 0.8;
-  const gr = ctx.createRadialGradient(sx, sy, R * light * 0.5, sx, sy, R * (light + (S.dark ? 0.12 : 0.35)));
+  const radii = S.dark
+    ? blackoutRadii(zoom, p.hp / p.maxHp)
+    : { inner: R * light * 0.5, outer: R * (light + 0.35) };
+  const gr = ctx.createRadialGradient(sx, sy, radii.inner, sx, sy, radii.outer);
   const sh = S.area.shade;
   gr.addColorStop(0, `rgba(${sh},0)`);
-  gr.addColorStop(1, `rgba(${sh},${S.dark ? 0.97 : 0.88})`);
+  gr.addColorStop(1, `rgba(${sh},${S.dark ? 1 : 0.88})`);
   ctx.fillStyle = gr; ctx.fillRect(0, 0, cw, ch);
   if (S.dark) for (const e of S.enemies) { // glowing eyes in the dark
     const ex = (e.x - camX) * zoom, ey = (e.y - camY) * zoom;

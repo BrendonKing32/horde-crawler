@@ -106,7 +106,7 @@ function updateShots(dt: number) {
     s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt;
     if (s.life <= 0) { s.dead = true; continue; }
     const tx = Math.floor(s.x / T), ty = Math.floor(s.y / T);
-    if (solidAt(tx, ty)) {
+    if (solidAt(tx, ty, true)) {
       const key = ty * S.cols + tx;
       const g = S.genAt.get(key); if (g && g.alive) hitGen(g, s.dmg);
       const cf = S.coffinAt.get(key); if (cf && cf.alive) hitCoffin(cf, s.dmg);
@@ -153,7 +153,7 @@ function updateSpawners(dt: number) {
     g.hit = Math.max(0, g.hit - dt);
     g.t -= dt;
     if (g.t > 0) continue;
-    g.t = (2.8 - g.tier * 0.5) * (0.7 + Math.random() * 0.6);
+    g.t = (2.8 - g.tier * 0.5) * (0.7 + Math.random() * 0.6) * (S.area.style === "desert" ? 0.45 : 1);
     if (Math.hypot(g.x - p.x, g.y - p.y) < 11 * T && S.enemies.length < 130) spawnFrom(g);
   }
 }

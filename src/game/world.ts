@@ -1,16 +1,16 @@
 import { GATES } from "../gen/generator";
 import { T } from "./constants";
-import { say } from "./narrator";
+import { say, sayOnce } from "./narrator";
 import { S } from "./state";
 import type { Vec } from "./types";
 
 type Body = Vec & { r: number };
 
 /** Walls, locked doors, closed gates, live spawners and intact coffins block movement and shots. */
-export function solidAt(tx: number, ty: number): boolean {
+export function solidAt(tx: number, ty: number, projectile = false): boolean {
   if (tx < 0 || ty < 0 || tx >= S.cols || ty >= S.rows) return true;
   const c = S.grid[ty][tx];
-  if (c === "#" || c === "D" || GATES.includes(c)) return true;
+  if (c === "#" || c === "H" || c === "D" || (c === "Q" && !projectile) || GATES.includes(c)) return true;
   const k = ty * S.cols + tx;
   const g = S.genAt.get(k);
   if (g && g.alive) return true;
@@ -40,16 +40,18 @@ export function movePlayer(dx: number, dy: number) {
   const p = S.p;
   if (move(p, dx, dy)) return;
   p.x += dx; p.y += dy;
-  let door: [number, number] | null = null, gate = false;
+  let door: [number, number] | null = null, gate = false, quicksand = false;
   eachTile(p, (tx, ty) => {
     const c = S.grid[ty]?.[tx];
     if (c === "D") { door = [tx, ty]; return true; }
     if (c && GATES.includes(c)) gate = true;
+    if (c === "Q") quicksand = true;
     return false;
   });
   p.x -= dx; p.y -= dy;
   const d = door as [number, number] | null;
   if (!d) {
+    if (quicksand) sayOnce("quicksand", "Quicksand blocks your path, but shots can cross it.");
     if (gate && S.time > S.lockSay) { S.lockSay = S.time + 3; say("Sealed. Find the lever that matches its color."); }
     return;
   }

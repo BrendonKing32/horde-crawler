@@ -4,6 +4,7 @@ import { say, sayOnce } from "./narrator";
 import { S } from "./state";
 import type { Enemy } from "./types";
 import { move, solidAt } from "./world";
+import { highTide, inAstralBeam } from "./area-mechanics";
 
 /** Per-enemy context computed once per frame. */
 interface Ctx { dt: number; dx: number; dy: number; d: number; ux: number; uy: number; sp: number }
@@ -16,14 +17,51 @@ export function updateEnemies(dt: number) {
     e.hit = Math.max(0, (e.hit || 0) - dt);
     const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy) || 1;
     if (d > 16 * T) continue; // dormant when far away
-    const c: Ctx = { dt, dx, dy, d, ux: dx / d, uy: dy / d, sp: e.speed * dt };
+    const empowered = S.area.style === "observatory" && inAstralBeam(e.x, e.y, S.mw, S.mh, S.time);
+    const drowned = S.area.style === "archive" && e.type === "grunt" && highTide(S.time);
+    const c: Ctx = { dt, dx, dy, d, ux: dx / d, uy: dy / d, sp: e.speed * dt * (empowered ? 1.5 : drowned ? 1.25 : 1) };
+    if (S.area.style === "hollow" && e.type !== "reaper" && e.type !== "boss") {
+      e.sporeCd = (e.sporeCd ?? 3) - dt;
+      if (e.sporeCd <= 0) {
+        e.sporeCd = 5;
+        const tx = Math.floor(e.x / T), ty = Math.floor(e.y / T);
+        const neighbours = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+        const spot = neighbours.find(([dx, dy]) =>
+          S.grid[ty + dy]?.[tx + dx] === "." &&
+          !solidAt(tx + dx, ty + dy) &&
+          Math.hypot(S.p.x - (tx + dx + 0.5) * T, S.p.y - (ty + dy + 0.5) * T) >= T);
+        if (spot) S.spores.add((ty + spot[1]) * S.cols + tx + spot[0]);
+      }
+    }
     if (e.type === "boss") boss(e, c);
     else if (e.type === "reaper") reaper(e, c);
     else if (e.type === "lobber") lobber(e, c);
+    else if (e.type === "archer") archer(e, c);
     else if (e.type === "biter") biter(e, c);
     else grunt(e, c);
   }
   separate();
+}
+
+function archer(e: Enemy, c: Ctx) {
+  const steps = Math.ceil(c.d / (T / 2));
+  let clear = true;
+  for (let i = 1; i < steps; i++) {
+    const x = e.x + c.dx * i / steps, y = e.y + c.dy * i / steps;
+    if (solidAt(Math.floor(x / T), Math.floor(y / T), true)) { clear = false; break; }
+  }
+  if (!clear || c.d > 11 * T) chaseStep(e, c);
+  else if (c.d < 3 * T) {
+    move(e, -c.ux * c.sp, 0);
+    move(e, 0, -c.uy * c.sp);
+  }
+  e.throwCd = (e.throwCd ?? 1) - c.dt;
+  e.wind = Math.max(0, (e.wind || 0) - c.dt);
+  if (clear && c.d < 12 * T && e.throwCd <= 0) {
+    e.throwCd = 2;
+    e.wind = 0.25;
+    S.enemyShots.push({ x: e.x + c.ux * (e.r + 4), y: e.y + c.uy * (e.r + 4), vx: c.ux * 260, vy: c.uy * 260, life: 1.6 });
+  }
 }
 
 function boss(e: Enemy, c: Ctx) {

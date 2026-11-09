@@ -3,12 +3,26 @@ import { AREA, GATES, LEVERS, areaOf, buildFloor, type FloorMap } from "../src/g
 
 type Pt = [number, number];
 const N4: Pt[] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-const SOLID = "#GLS"; // walls, spawners, coffins
+const SOLID = "#GLSHQ"; // walls, spawners, coffins, hidden passages, quicksand
 
 function find(m: string[], c: string): Pt[] {
   const out: Pt[] = [];
   m.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === c) out.push([x, y]); }));
   return out;
+}
+
+function reachableIgnoringObjects(m: string[], openGates: string, reveal: boolean): Set<number> {
+  const [start] = find(m, "P"), width = m[0].length;
+  const seen = new Set([start[1] * width + start[0]]), queue = [start];
+  for (let i = 0; i < queue.length; i++) {
+    const [x, y] = queue[i];
+    for (const [dx, dy] of N4) {
+      const nx = x + dx, ny = y + dy, c = m[ny]?.[nx], key = ny * width + nx;
+      if (!c || c === "#" || c === "D" || (c === "H" && !reveal) || (GATES.includes(c) && !openGates.includes(c)) || seen.has(key)) continue;
+      seen.add(key); queue.push([nx, ny]);
+    }
+  }
+  return seen;
 }
 
 /**
@@ -75,14 +89,17 @@ const FLOORS_PER_DEPTH = 24;
 
 describe("floor generator", () => {
   it("maps floors to areas every five floors", () => {
-    expect([1, 5, 6, 11, 16, 21, 26].map(areaOf)).toEqual([AREA.CRYPT, AREA.CRYPT, AREA.CAVERNS, AREA.CATACOMBS, AREA.PLAGUE, AREA.CARNIVAL, AREA.CRYPT]);
+    expect([1, 5, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51].map(areaOf)).toEqual([
+      AREA.CRYPT, AREA.CRYPT, AREA.CAVERNS, AREA.CATACOMBS, AREA.PLAGUE, AREA.CARNIVAL,
+      AREA.ARCHIVE, AREA.FOUNDRY, AREA.HOLLOW, AREA.OBSERVATORY, AREA.DESERT, AREA.CRYPT,
+    ]);
   });
 
   it("is deterministic for a seed", () => {
     expect(buildFloor(1234, 7).join("\n")).toBe(buildFloor(1234, 7).join("\n"));
   });
 
-  for (let depth = 1; depth <= 25; depth++) {
+  for (let depth = 1; depth <= 50; depth++) {
     it(`floor ${depth}: every floor is winnable and follows the placement rules`, () => {
       for (let s = 0; s < FLOORS_PER_DEPTH; s++) {
         const m = buildFloor(s * 7919 + depth, depth);
@@ -101,13 +118,23 @@ describe("floor generator", () => {
         if (area !== AREA.CATACOMBS) expect(find(m, "^")).toHaveLength(0);
         if (area !== AREA.PLAGUE) expect(find(m, "~")).toHaveLength(0);
         if (area !== AREA.CARNIVAL) expect(m.tents ?? []).toHaveLength(0);
+        for (const [feature, owner] of [["V", AREA.FOUNDRY], ["M", AREA.FOUNDRY], ["U", AREA.HOLLOW], ["H", AREA.OBSERVATORY], ["Q", AREA.DESERT]] as const) {
+          if (area !== owner) expect(find(m, feature)).toHaveLength(0);
+          else expect(find(m, feature).length).toBeGreaterThan(0);
+        }
+        if (area === AREA.OBSERVATORY) for (let i = 0; i <= 3; i++) {
+          const before = reachableIgnoringObjects(m, GATES.slice(0, i), false);
+          const after = reachableIgnoringObjects(m, GATES.slice(0, i), true);
+          for (const key of after) if (m[Math.floor(key / 44)][key % 44] !== "H")
+            expect(before.has(key), `revealed passage bypassed a gate at seed ${s * 7919 + depth}`).toBe(true);
+        }
       }
     }, 30_000);
   }
 
   it("gives every reaper a potion it can reach first", () => {
     for (let s = 0; s < 40; s++) {
-      const depth = 2 + (s % 20), m = buildFloor(s * 31, depth);
+      const depth = 2 + (s % 49), m = buildFloor(s * 31, depth);
       expect(find(m, "O").length).toBeGreaterThanOrEqual(find(m, "R").length);
     }
   });

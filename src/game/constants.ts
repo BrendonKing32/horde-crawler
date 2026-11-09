@@ -16,7 +16,7 @@ export const PAIR = [C.mana, C.ranger, C.rose];
 export const BULBS = [C.blood, C.gold, C.ranger, C.rose];
 export const BALLOONS = ["#e0524f", "#f2c14e", "#5fc2d9", "#c98bdb"];
 
-export type WallStyle = "brick" | "rock" | "bone" | "plague" | "carnival";
+export type WallStyle = "brick" | "rock" | "bone" | "plague" | "carnival" | "archive" | "foundry" | "hollow" | "observatory" | "desert";
 
 export interface AreaTheme {
   name: string;
@@ -38,6 +38,11 @@ export const AREAS: AreaTheme[] = [
   { name: "The Catacombs", style: "bone", wall: "#2c4241", hi: "#4d6c67", a: "#111a19", b: "#152020", fleck: "#cfc6ad", shade: "5,6,10" },
   { name: "The Plague Ward", style: "plague", plague: true, wall: "#313d27", hi: "#566b3a", a: "#131810", b: "#171e12", fleck: "#9bbf4a", shade: "7,12,5" },
   { name: "The Carnival", style: "carnival", carnival: true, wall: "#33243f", hi: "#5a3d6b", a: "#18131d", b: "#1c1622", fleck: "#e8c45a", shade: "8,5,14" },
+  { name: "The Sunken Archive", style: "archive", wall: "#23434c", hi: "#56838a", a: "#101e27", b: "#142733", fleck: "#7fb4b9", shade: "3,11,17" },
+  { name: "The Clockwork Foundry", style: "foundry", wall: "#514035", hi: "#96765a", a: "#211b19", b: "#29211c", fleck: "#db9950", shade: "15,8,4" },
+  { name: "The Fungal Hollow", style: "hollow", wall: "#343e31", hi: "#667956", a: "#151d18", b: "#1b251c", fleck: "#b3ce78", shade: "5,12,8" },
+  { name: "The Astral Observatory", style: "observatory", wall: "#313456", hi: "#7778a9", a: "#141729", b: "#1a1d35", fleck: "#c5bcff", shade: "5,5,18" },
+  { name: "The Shifting Desert", style: "desert", wall: "#705133", hi: "#c3965e", a: "#654b31", b: "#715537", fleck: "#e5bf7c", shade: "22,13,6" },
 ];
 
 export type ClassId = "warden" | "ranger";
