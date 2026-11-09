@@ -36,9 +36,12 @@ export interface Player extends Vec {
   slowF: number;
   cloudT: number;
   poolT: number;
+  abilityCd: number;
+  guardT: number;
+  dashT: number;
 }
 
-export type EnemyType = "grunt" | "biter" | "lobber" | "reaper";
+export type EnemyType = "grunt" | "biter" | "lobber" | "reaper" | "boss";
 export type BiterMode = "wander" | "chase" | "scatter";
 
 export interface Enemy extends Vec {
@@ -68,6 +71,12 @@ export interface Enemy extends Vec {
   fed?: number;
   ping?: number;
   inWall?: boolean;
+  maxHp?: number;
+  chargeCd?: number;
+  chargeWind?: number;
+  chargeT?: number;
+  chargeX?: number;
+  chargeY?: number;
 }
 
 export interface Spawner extends Vec {
@@ -107,7 +116,7 @@ export interface Boom extends Vec { t: number }
 export interface GateOpening { tx: number; ty: number; id: number; t: number }
 export interface Camera { x: number; y: number; w: number; h: number }
 
-export type GameState = "ready" | "play" | "levelup" | "over";
+export type GameState = "ready" | "play" | "levelup" | "bossclear" | "over";
 
 /** Everything carried between floors of one run. */
 export interface Carry {
@@ -171,4 +180,6 @@ export interface World {
   lightsT: number;
   dark: boolean;
   flick: boolean;
+  bossFloor: boolean;
+  bossDefeated: boolean;
 }

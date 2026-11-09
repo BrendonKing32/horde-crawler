@@ -2,13 +2,13 @@ import { GATES } from "../gen/generator";
 import { C, PAIR, T } from "./constants";
 import { blast, hitCoffin, hitGen, hurt, killEnemy, spawnFrom, usePotion } from "./actions";
 import { updateEnemies } from "./enemies";
-import { endRun, nextFloor } from "./flow";
+import { bossClear, nextFloor, endRun } from "./flow";
 import { updateHazards } from "./hazards";
 import { input } from "./input";
 import { pop, say, sayOnce, tickNarrator } from "./narrator";
 import { openLevelUp } from "./progression";
 import { S } from "./state";
-import { movePlayer, solidAt } from "./world";
+import { move, movePlayer, solidAt } from "./world";
 
 /** Advance the game by dt seconds. Only called while S.state === "play". */
 export function update(dt: number) {
@@ -30,7 +30,11 @@ export function update(dt: number) {
   healthWarnings();
   updateEffects(dt);
 
-  if (S.exit && Math.hypot(S.exit.x - p.x, S.exit.y - p.y) < 18) { nextFloor(); return; }
+  if (S.exit && Math.hypot(S.exit.x - p.x, S.exit.y - p.y) < 18) {
+    if (S.bossFloor) {
+      if (S.bossDefeated) { bossClear(); return; }
+    } else { nextFloor(); return; }
+  }
   if (p.hp <= 0) { p.hp = 0; endRun(false); }
 }
 
@@ -42,17 +46,47 @@ function updatePlayer(dt: number) {
   if (k.has("s") || k.has("arrowdown")) iy++;
   if (k.has("w") || k.has("arrowup")) iy--;
   if (input.joy) { ix += (input.joy.x - input.joy.ox) / 50; iy += (input.joy.y - input.joy.oy) / 50; }
+  const touchAiming = !!input.aimJoy && Math.hypot(input.aimJoy.x - input.aimJoy.ox, input.aimJoy.y - input.aimJoy.oy) > 12;
   const L = Math.hypot(ix, iy);
   if (L > 0.25) {
     const n = Math.min(L, 1);
     ix /= L; iy /= L;
-    p.face = { x: ix, y: iy };
+    if (!input.aim && !touchAiming) p.face = { x: ix, y: iy };
     const sp = p.st.speed * p.slowF * n * dt;
     movePlayer(ix * sp, 0);
     movePlayer(0, iy * sp);
   }
+  input.aimDirection = null;
+  if (input.aimJoy) {
+    const ax = input.aimJoy.x - input.aimJoy.ox, ay = input.aimJoy.y - input.aimJoy.oy, m = Math.hypot(ax, ay);
+    if (m > 12) input.aimDirection = { x: ax / m, y: ay / m };
+  }
+  if (input.aimDirection) p.face = input.aimDirection;
+  else if (input.aim) {
+    const ax = input.aim.x - p.x, ay = input.aim.y - p.y, m = Math.hypot(ax, ay);
+    if (m > 1) p.face = { x: ax / m, y: ay / m };
+  }
+  p.abilityCd = Math.max(0, p.abilityCd - dt);
+  p.guardT = Math.max(0, p.guardT - dt);
+  p.dashT = Math.max(0, p.dashT - dt);
+  if (input.abilityReq) {
+    input.abilityReq = false;
+    if (p.abilityCd <= 0) {
+      p.abilityCd = p.cls.color === "torch" ? 7 : 5;
+      if (p.cls.color === "torch") {
+        p.guardT = 1.8;
+        say("Bulwark. Monster hits are halved.");
+      } else {
+        for (let step = 0; step < 8; step++)
+          if (!move(p, p.face.x * 14, p.face.y * 14)) break;
+        p.dashT = 0.45;
+        S.booms.push({ x: p.x, y: p.y, t: 0.25 });
+        say("Quickstep. You dodge monster hits briefly.");
+      }
+    }
+  }
   p.cd -= dt;
-  const firing = k.has(" ") || k.has("j") || input.fireTouch;
+  const firing = k.has(" ") || k.has("j") || input.fireTouch || input.fireMouse;
   if (firing && p.cd <= 0) {
     const s = p.st;
     p.cd = s.cd;

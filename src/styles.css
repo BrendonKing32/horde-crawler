@@ -44,6 +44,8 @@ canvas{display:block;width:100%;height:100%}
 .b-fire{width:84px;height:84px;background:rgba(242,165,65,.18);border-color:var(--torch)!important}
 .b-fire.down{background:rgba(242,165,65,.45)}
 .b-pot{width:60px;height:60px;background:rgba(90,169,255,.15);border-color:var(--mana)!important}
+.b-ability{width:60px;height:60px;background:rgba(98,210,194,.15);border-color:var(--ranger)!important;font-size:12px!important}
+.b-ability.cooldown{opacity:.45}
 .joyhint{position:absolute;left:14px;bottom:14px;color:var(--dim);font-size:11px;display:none;pointer-events:none}
 .keyhint{color:var(--dim);font-size:11px}
 @media (pointer:coarse){.pad{display:flex}.joyhint{display:block}.keyhint{display:none}}

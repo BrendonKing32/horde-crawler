@@ -17,12 +17,36 @@ export function updateEnemies(dt: number) {
     const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy) || 1;
     if (d > 16 * T) continue; // dormant when far away
     const c: Ctx = { dt, dx, dy, d, ux: dx / d, uy: dy / d, sp: e.speed * dt };
-    if (e.type === "reaper") reaper(e, c);
+    if (e.type === "boss") boss(e, c);
+    else if (e.type === "reaper") reaper(e, c);
     else if (e.type === "lobber") lobber(e, c);
     else if (e.type === "biter") biter(e, c);
     else grunt(e, c);
   }
   separate();
+}
+
+function boss(e: Enemy, c: Ctx) {
+  e.chargeCd = (e.chargeCd ?? 2) - c.dt;
+  if (e.chargeWind !== undefined) {
+    e.chargeWind -= c.dt;
+    e.wind = Math.max(0, e.chargeWind);
+    if (e.chargeWind <= 0) { e.chargeWind = undefined; e.chargeT = 0.55; }
+  } else if ((e.chargeT || 0) > 0) {
+    move(e, (e.chargeX || 0) * 220 * c.dt, 0);
+    move(e, 0, (e.chargeY || 0) * 220 * c.dt);
+    e.chargeT = (e.chargeT || 0) - c.dt;
+    if (e.chargeT <= 0) e.chargeCd = 3;
+  } else if (e.chargeCd <= 0) {
+    e.chargeWind = 0.7;
+    e.chargeX = c.ux;
+    e.chargeY = c.uy;
+    sayOnce("boss", "The champion winds up a charge. Get clear.");
+  } else {
+    chaseStep(e, { ...c, sp: c.sp * 0.8 });
+  }
+  const d = Math.hypot(S.p.x - e.x, S.p.y - e.y);
+  if (d < e.r + S.p.r + 1 && e.cd <= 0) { hurt(12); e.cd = 0.75; }
 }
 
 const touching = (e: Enemy, c: Ctx) => c.d < e.r + S.p.r + 1;

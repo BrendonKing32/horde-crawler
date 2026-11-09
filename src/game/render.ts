@@ -41,6 +41,14 @@ export function render() {
   drawEnemies(now);
   drawProjectiles(now);
   drawPlayer(p);
+  if (input.aim) {
+    ctx.strokeStyle = "rgba(236,230,216,.75)"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(input.aim.x, input.aim.y, 8, 0, 7); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(input.aim.x - 12, input.aim.y); ctx.lineTo(input.aim.x - 5, input.aim.y);
+    ctx.moveTo(input.aim.x + 5, input.aim.y); ctx.lineTo(input.aim.x + 12, input.aim.y);
+    ctx.moveTo(input.aim.x, input.aim.y - 12); ctx.lineTo(input.aim.x, input.aim.y - 5);
+    ctx.moveTo(input.aim.x, input.aim.y + 5); ctx.lineTo(input.aim.x, input.aim.y + 12); ctx.stroke();
+  }
   ctx.textAlign = "center";
   ctx.font = `700 12px ${DISPLAY_FONT}`;
   for (const q of S.pops) { ctx.globalAlpha = Math.min(1, q.t * 2); ctx.fillStyle = q.color; ctx.fillText(q.text, q.x, q.y); }
@@ -155,7 +163,10 @@ function drawFloorObjects(now: number) {
     const e = S.exit, pulse = reduce ? 0 : Math.sin(now * 3) * 2;
     ctx.fillStyle = "rgba(242,165,65,.12)"; ctx.beginPath(); ctx.arc(e.x, e.y, 22 + pulse, 0, 7); ctx.fill();
     ctx.strokeStyle = C.torch; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(e.x, e.y, 14 + pulse / 2, 0, 7); ctx.stroke();
-    ctx.fillStyle = C.torch; ctx.font = `700 10px ${DISPLAY_FONT}`; ctx.textAlign = "center"; ctx.fillText("EXIT", e.x, e.y + 3.5);
+    const locked = S.bossFloor && !S.bossDefeated;
+    ctx.fillStyle = locked ? C.blood : C.torch;
+    ctx.font = `700 9px ${DISPLAY_FONT}`; ctx.textAlign = "center";
+    ctx.fillText(locked ? "LOCKED" : "EXIT", e.x, e.y + 3.5);
   }
   for (const k of S.pickups) {
     if (!k.alive) continue;
@@ -227,7 +238,8 @@ function drawEnemies(now: number) {
   const p = S.p;
   for (const e of S.enemies) {
     const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy) || 1;
-    if (e.type === "reaper") drawReaper(e, dx / d, now);
+    if (e.type === "boss") drawBoss(e, now);
+    else if (e.type === "reaper") drawReaper(e, dx / d, now);
     else if (e.type === "biter" && e.under) {
       const j = reduce ? 0 : Math.sin(now * 20 + e.x) * 2;
       ctx.fillStyle = "#47392b"; ctx.beginPath(); ctx.ellipse(e.x, e.y + 2, 9, 5, 0, 0, 7); ctx.fill();
@@ -260,6 +272,25 @@ function drawReaper(e: Enemy, ux: number, now: number) {
   ctx.strokeStyle = C.dim; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(e.x + 14, y + 12); ctx.lineTo(e.x + 14, y - 14); ctx.stroke();
   ctx.strokeStyle = C.ink; ctx.beginPath(); ctx.moveTo(e.x + 14, y - 14); ctx.quadraticCurveTo(e.x + 4, y - 20, e.x - 2, y - 12); ctx.stroke();
   ctx.globalAlpha = 1;
+}
+
+function drawBoss(e: Enemy, now: number) {
+  const pulse = reduce ? 0 : Math.sin(now * 5) * 2;
+  if ((e.chargeWind || 0) > 0) {
+    ctx.strokeStyle = `rgba(242,165,65,${0.35 + (e.chargeWind || 0) * 0.5})`;
+    ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(e.x, e.y, 27 + pulse, 0, 7); ctx.stroke();
+  }
+  ctx.fillStyle = "rgba(214,67,91,.2)"; ctx.beginPath(); ctx.arc(e.x, e.y, 27 + pulse, 0, 7); ctx.fill();
+  ctx.fillStyle = (e.hit || 0) > 0 ? C.ink : "#7f263b";
+  ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, 7); ctx.fill();
+  ctx.strokeStyle = "#e76a73"; ctx.lineWidth = 2.5; ctx.stroke();
+  ctx.fillStyle = "#401322";
+  ctx.beginPath(); ctx.moveTo(e.x - 10, e.y - 9); ctx.lineTo(e.x - 18, e.y - 25); ctx.lineTo(e.x - 3, e.y - 16); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(e.x + 10, e.y - 9); ctx.lineTo(e.x + 18, e.y - 25); ctx.lineTo(e.x + 3, e.y - 16); ctx.fill();
+  ctx.fillStyle = C.torch;
+  ctx.fillRect(e.x - 7, e.y - 3, 4, 4); ctx.fillRect(e.x + 3, e.y - 3, 4, 4);
+  ctx.fillStyle = "rgba(0,0,0,.7)"; ctx.fillRect(e.x - 20, e.y - 29, 40, 4);
+  ctx.fillStyle = C.blood; ctx.fillRect(e.x - 20, e.y - 29, 40 * Math.max(0, e.hp) / (e.maxHp || e.hp), 4);
 }
 
 function drawBiter(e: Enemy, ux: number, uy: number, now: number) {
@@ -368,5 +399,14 @@ function drawScreenOverlays(camX: number, camY: number, now: number) {
     const m = Math.hypot(jx, jy);
     if (m > 50) { jx *= 50 / m; jy *= 50 / m; }
     ctx.fillStyle = "rgba(236,230,216,.4)"; ctx.beginPath(); ctx.arc(joy.ox + jx, joy.oy + jy, 20, 0, 7); ctx.fill();
+  }
+  const aimJoy = input.aimJoy;
+  if (aimJoy) {
+    ctx.strokeStyle = "rgba(98,210,194,.45)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(aimJoy.ox, aimJoy.oy, 50, 0, 7); ctx.stroke();
+    let ax = aimJoy.x - aimJoy.ox, ay = aimJoy.y - aimJoy.oy;
+    const m = Math.hypot(ax, ay);
+    if (m > 50) { ax *= 50 / m; ay *= 50 / m; }
+    ctx.fillStyle = "rgba(98,210,194,.5)"; ctx.beginPath(); ctx.arc(aimJoy.ox + ax, aimJoy.oy + ay, 20, 0, 7); ctx.fill();
   }
 }

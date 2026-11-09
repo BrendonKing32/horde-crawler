@@ -16,7 +16,9 @@ Open the URL Vite prints. Controls:
 | Action | Keyboard | Touch |
 |---|---|---|
 | Move | WASD / arrows | Drag on the left side |
-| Fire | Space / J | FIRE button |
+| Aim | Mouse pointer | Drag on the right side |
+| Fire | Space / J / left mouse button | FIRE button |
+| Class ability | E | Ability button |
 | Potion (clears the screen) | K / Q | POT button |
 | Pick class / upgrade | 1, 2, 3 | Tap |
 
@@ -24,7 +26,8 @@ The start screen has a **Testing: start in** row to jump straight to any area.
 
 ## What's in it
 
-- **Two classes.** Warden (slow, armored, heavy shots) and Ranger (fast, rapid fire, fragile).
+- **Two classes.** Warden (slow, armored, heavy shots) can activate Bulwark to halve monster damage briefly; Ranger (fast, rapid fire, fragile) can Quickstep-dash and dodge monster hits.
+- **Area champions.** Every fifth floor ends with a champion fight. Reach the exit after defeating it to claim victory or continue deeper.
 - **Procedural floors** that change layout algorithm and theme every five floors:
 
   | Floors | Area | Layout | Area hazard | Enemy twist |
