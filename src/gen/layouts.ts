@@ -207,20 +207,32 @@ export function plagueWard(k: LayoutKit): Room[] {
 }
 
 /**
- * CARNIVAL fairgrounds: open plots split by fences; turnstile gaps join plots via a random
- * spanning tree plus a few extras. About half the plots hold a striped tent tucked into a
- * corner with one flap entrance (natural vaults). Returns null if a fence can't get a gap.
+ * CARNIVAL fairgrounds: a fenced, seed-varied footprint surrounded by dead trees. Turnstile
+ * gaps join plots via a random spanning tree plus a few extras. About half the plots hold a
+ * striped tent tucked into a corner with one flap entrance (natural vaults). Returns null if
+ * a fence can't get a gap.
  */
 export function fairgrounds(k: LayoutKit): Room[] | null {
   const { g, rand } = k;
-  for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) g[y][x] = ".";
-  const nc = rand.int(3, 4), nr = 3, xs = [0], ys = [0];
-  for (let i = 1; i < nc; i++) xs.push(Math.round((i * (W - 1)) / nc) + rand.int(-1, 1));
-  xs.push(W - 1);
-  for (let j = 1; j < nr; j++) ys.push(Math.round((j * (H - 1)) / nr) + rand.int(-1, 1));
-  ys.push(H - 1);
-  for (const x of xs.slice(1, -1)) for (let y = 1; y < H - 1; y++) g[y][x] = "#";
-  for (const y of ys.slice(1, -1)) for (let x = 1; x < W - 1; x++) g[y][x] = "#";
+  for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) g[y][x] = "t";
+  const left = rand.int(2, 4), right = W - rand.int(3, 5);
+  const top = rand.int(2, 3), bottom = H - rand.int(3, 4);
+  for (let y = top + 1; y < bottom - 1; y++) for (let x = left + 1; x < right - 1; x++) g[y][x] = ".";
+  const nc = rand.int(3, 4), nr = 3, xs = [left], ys = [top];
+  for (let i = 1; i < nc; i++) xs.push(Math.round(left + (i * (right - left)) / nc) + rand.int(-1, 1));
+  xs.push(right);
+  for (let j = 1; j < nr; j++) ys.push(Math.round(top + (j * (bottom - top)) / nr) + rand.int(-1, 1));
+  ys.push(bottom);
+  for (const x of xs.slice(1, -1)) for (let y = top; y < bottom; y++) g[y][x] = "#";
+  for (const y of ys.slice(1, -1)) for (let x = left; x < right; x++) g[y][x] = "#";
+  for (let x = left; x < right; x++) g[top][x] = g[bottom - 1][x] = "#";
+  for (let y = top; y < bottom; y++) g[y][left] = g[y][right - 1] = "#";
+  const northEntry = rand.int(xs[0] + 2, xs[1] - 2);
+  const southEntry = rand.int(xs[nc - 1] + 2, xs[nc] - 3);
+  for (const x of [northEntry, southEntry]) {
+    const y = x === northEntry ? top : bottom - 1;
+    g[y][x] = g[y][x + 1] = ".";
+  }
   interface Plot { i: number; j: number; x: number; y: number; w: number; h: number }
   const plots: Plot[] = [];
   for (let j = 0; j < nr; j++) for (let i = 0; i < nc; i++)
