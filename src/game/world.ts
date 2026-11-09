@@ -10,7 +10,7 @@ type Body = Vec & { r: number };
 export function solidAt(tx: number, ty: number): boolean {
   if (tx < 0 || ty < 0 || tx >= S.cols || ty >= S.rows) return true;
   const c = S.grid[ty][tx];
-  if (c === "#" || c === "D" || GATES.includes(c)) return true;
+  if (c === "#" || c === "t" || c === "D" || GATES.includes(c)) return true;
   const k = ty * S.cols + tx;
   const g = S.genAt.get(k);
   if (g && g.alive) return true;
