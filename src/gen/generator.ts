@@ -1,7 +1,7 @@
 /**
  * Floor generator. Produces a 44x32 character map:
  *
- *   #  wall            .  floor           P  player start     X  exit
+ *   #  wall            .  floor           t  dead tree        P  player start     X  exit
  *   D  locked door     K  key             G  horde spawner    L  lobber den
  *   R  reaper          F  food            O  potion           $  treasure
  *   a b c  gates       x y z  their levers (gate "a" opens with lever "x", etc.)
@@ -13,7 +13,7 @@
  * - every region has food; every reaper has a potion at or before its own region
  */
 import { makeRand } from "./rng";
-import { H, W, archive, caverns, catacombs, crypt, fairgrounds, foundry, hollow, makeKit, observatory, plagueWard, type Pt, type Room } from "./layouts";
+import { H, W, archive, caverns, catacombs, crypt, fairgrounds, foundry, hollow, makeKit, observatory, plagueWard, type LayoutKit, type Pt, type Room } from "./layouts";
 
 export const GATES = "abc";
 export const LEVERS = "xyz";
@@ -46,7 +46,7 @@ export function generate(seed: number, depth: number, area: AreaId = AREA.CRYPT)
   const rand = makeRand(seed);
   const kit = makeKit(rand);
   const { g } = kit;
-  const layout = [crypt, caverns, catacombs, plagueWard, fairgrounds, archive, foundry, hollow, observatory, fairgrounds][area];
+  const layout = [crypt, caverns, catacombs, plagueWard, fairgrounds, archive, foundry, hollow, observatory, (k: LayoutKit) => fairgrounds(k, true)][area];
   const rooms = layout(kit);
   if (!rooms || rooms.length < 6) return null;
 
@@ -62,7 +62,7 @@ export function generate(seed: number, depth: number, area: AreaId = AREA.CRYPT)
       const [x, y] = q[i];
       for (const [dx, dy] of N4) {
         const X = x + dx, Y = y + dy, c = g[Y][X];
-        if (c === "#" || c === "D" || c === "=" || (GATES.includes(c) && !open.includes(c)) || D[Y][X] >= 0) continue;
+        if (c === "#" || c === "t" || c === "D" || c === "=" || (GATES.includes(c) && !open.includes(c)) || D[Y][X] >= 0) continue;
         D[Y][X] = D[y][x] + 1;
         q.push([X, Y]);
       }

@@ -3,7 +3,7 @@ import { AREA, GATES, LEVERS, areaOf, buildFloor, type FloorMap } from "../src/g
 
 type Pt = [number, number];
 const N4: Pt[] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-const SOLID = "#GLSHQ"; // walls, spawners, coffins, hidden passages, quicksand
+const SOLID = "#tGLSHQ"; // walls, trees, spawners, coffins, hidden passages, quicksand
 
 function find(m: string[], c: string): Pt[] {
   const out: Pt[] = [];
@@ -118,6 +118,8 @@ describe("floor generator", () => {
         if (area !== AREA.CATACOMBS) expect(find(m, "^")).toHaveLength(0);
         if (area !== AREA.PLAGUE) expect(find(m, "~")).toHaveLength(0);
         if (area !== AREA.CARNIVAL) expect(m.tents ?? []).toHaveLength(0);
+        if (area === AREA.CARNIVAL) expect(find(m, "t").length).toBeGreaterThan(0);
+        else expect(find(m, "t")).toHaveLength(0);
         for (const [feature, owner] of [["V", AREA.FOUNDRY], ["M", AREA.FOUNDRY], ["U", AREA.HOLLOW], ["H", AREA.OBSERVATORY], ["Q", AREA.DESERT]] as const) {
           if (area !== owner) expect(find(m, feature)).toHaveLength(0);
           else expect(find(m, feature).length).toBeGreaterThan(0);

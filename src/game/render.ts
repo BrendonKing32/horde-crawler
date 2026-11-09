@@ -68,10 +68,33 @@ function drawTiles(camX: number, camY: number, vw: number, vh: number, now: numb
   const y0 = Math.max(0, Math.floor(camY / T)), y1 = Math.min(S.rows - 1, Math.floor((camY + vh) / T));
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
     const c = S.grid[y][x];
-    if (c === "#" || c === "H") drawWall(x, y, now);
+    if (c === "t") drawDeadTree(x, y);
+    else if (c === "#" || c === "H") drawWall(x, y, now);
     else drawFloor(x, y, c, now);
   }
   for (const o of S.opening) drawGate(o.tx * T, o.ty * T, PAIR[o.id], o.t / 0.6);
+}
+
+function drawDeadTree(x: number, y: number) {
+  const h = hash(x, y), px = x * T, py = y * T;
+  ctx.fillStyle = (x + y) % 2 ? S.area.a : S.area.b;
+  ctx.fillRect(px, py, T, T);
+  ctx.strokeStyle = h % 2 ? "#352a36" : "#403341";
+  ctx.lineWidth = 3 + (h % 2);
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(px + 16, py + 28);
+  ctx.lineTo(px + 15 + (h % 5), py + 5);
+  ctx.moveTo(px + 15, py + 20);
+  ctx.lineTo(px + 5, py + 10 + ((h >> 3) % 5));
+  ctx.moveTo(px + 15, py + 17);
+  ctx.lineTo(px + 27, py + 7 + ((h >> 6) % 5));
+  ctx.moveTo(px + 15, py + 25);
+  ctx.lineTo(px + 7, py + 22);
+  ctx.moveTo(px + 16, py + 24);
+  ctx.lineTo(px + 26, py + 21);
+  ctx.stroke();
+  ctx.lineCap = "butt";
 }
 
 function drawWall(x: number, y: number, now: number) {
