@@ -212,11 +212,11 @@ export function plagueWard(k: LayoutKit): Room[] {
  * striped tent tucked into a corner with one flap entrance (natural vaults). Returns null if
  * a fence can't get a gap.
  */
-export function fairgrounds(k: LayoutKit): Room[] | null {
+export function fairgrounds(k: LayoutKit, desert = false): Room[] | null {
   const { g, rand } = k;
-  for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) g[y][x] = "t";
-  const left = rand.int(2, 4), right = W - rand.int(3, 5);
-  const top = rand.int(2, 3), bottom = H - rand.int(3, 4);
+  for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) g[y][x] = desert ? "." : "t";
+  const left = desert ? 0 : rand.int(2, 4), right = desert ? W - 1 : W - rand.int(3, 5);
+  const top = desert ? 0 : rand.int(2, 3), bottom = desert ? H - 1 : H - rand.int(3, 4);
   for (let y = top + 1; y < bottom - 1; y++) for (let x = left + 1; x < right - 1; x++) g[y][x] = ".";
   const nc = rand.int(3, 4), nr = 3, xs = [left], ys = [top];
   for (let i = 1; i < nc; i++) xs.push(Math.round(left + (i * (right - left)) / nc) + rand.int(-1, 1));
@@ -225,13 +225,15 @@ export function fairgrounds(k: LayoutKit): Room[] | null {
   ys.push(bottom);
   for (const x of xs.slice(1, -1)) for (let y = top; y < bottom; y++) g[y][x] = "#";
   for (const y of ys.slice(1, -1)) for (let x = left; x < right; x++) g[y][x] = "#";
-  for (let x = left; x < right; x++) g[top][x] = g[bottom - 1][x] = "#";
-  for (let y = top; y < bottom; y++) g[y][left] = g[y][right - 1] = "#";
-  const northEntry = rand.int(xs[0] + 2, xs[1] - 2);
-  const southEntry = rand.int(xs[nc - 1] + 2, xs[nc] - 3);
-  for (const x of [northEntry, southEntry]) {
-    const y = x === northEntry ? top : bottom - 1;
-    g[y][x] = g[y][x + 1] = ".";
+  if (!desert) {
+    for (let x = left; x < right; x++) g[top][x] = g[bottom - 1][x] = "#";
+    for (let y = top; y < bottom; y++) g[y][left] = g[y][right - 1] = "#";
+    const northEntry = rand.int(xs[0] + 2, xs[1] - 2);
+    const southEntry = rand.int(xs[nc - 1] + 2, xs[nc] - 3);
+    for (const x of [northEntry, southEntry]) {
+      const y = x === northEntry ? top : bottom - 1;
+      g[y][x] = g[y][x + 1] = ".";
+    }
   }
   interface Plot { i: number; j: number; x: number; y: number; w: number; h: number }
   const plots: Plot[] = [];
@@ -281,5 +283,35 @@ export function fairgrounds(k: LayoutKit): Room[] | null {
     if (!cand.length) return null;
     rand.pick(cand).forEach(([x, y]) => (g[y][x] = "."));
   }
+  return rooms;
+}
+
+/** Long, narrow library rooms connected by aisles. */
+export function archive(k: LayoutKit): Room[] {
+  const rooms = k.placeRooms(13, 5, 11, 4, 6);
+  rooms.forEach(k.fillRoom);
+  k.mst(rooms, (a, b) => lCorridor(k, a, b));
+  return rooms;
+}
+
+/** Machinery halls packed into a partitioned factory. */
+export function foundry(k: LayoutKit): Room[] {
+  return plagueWard(k);
+}
+
+/** Root tunnels and irregular fungal chambers. */
+export function hollow(k: LayoutKit): Room[] {
+  return caverns(k);
+}
+
+/** Chamfered observatory chambers joined by narrow bridges. */
+export function observatory(k: LayoutKit): Room[] {
+  const rooms = k.placeRooms(11, 6, 9, 6, 9);
+  for (const r of rooms) {
+    k.fillRoom(r);
+    for (const [x, y] of [[r.x, r.y], [r.x + r.w - 1, r.y], [r.x, r.y + r.h - 1], [r.x + r.w - 1, r.y + r.h - 1]])
+      k.g[y][x] = "#";
+  }
+  k.mst(rooms, (a, b) => lCorridor(k, a, b));
   return rooms;
 }

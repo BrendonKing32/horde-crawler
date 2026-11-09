@@ -41,7 +41,7 @@ export interface Player extends Vec {
   dashT: number;
 }
 
-export type EnemyType = "grunt" | "biter" | "lobber" | "reaper" | "boss";
+export type EnemyType = "grunt" | "biter" | "lobber" | "reaper" | "boss" | "archer";
 export type BiterMode = "wander" | "chase" | "scatter";
 
 export interface Enemy extends Vec {
@@ -77,6 +77,7 @@ export interface Enemy extends Vec {
   chargeT?: number;
   chargeX?: number;
   chargeY?: number;
+  sporeCd?: number;
 }
 
 export interface Spawner extends Vec {
@@ -97,6 +98,7 @@ export interface Lever extends Vec { id: number; on: boolean }
 export interface Coffin extends Vec { tx: number; ty: number; hp: number; alive: boolean; hit: number }
 export interface Trap extends Vec {
   tx: number; ty: number;
+  kind?: "press";
   /** Phase offset shared by a connected strip. */
   ph?: number;
   up?: boolean; warn?: boolean;
@@ -106,6 +108,7 @@ export interface Trap extends Vec {
 }
 
 export interface Shot extends Vec { vx: number; vy: number; life: number; dmg: number; pierce: number; hits: Set<Enemy>; dead?: boolean }
+export interface EnemyShot extends Vec { vx: number; vy: number; life: number }
 export interface Bomb { sx: number; sy: number; tx: number; ty: number; t: number; dur: number; dead?: boolean }
 export interface Balloon extends Vec { vx: number; vy: number; t: number; c: string; dead?: boolean }
 export interface Cloud extends Vec { t: number; r: number; seed: number }
@@ -151,10 +154,14 @@ export interface World {
   coffinAt: Map<number, Coffin>;
   traps: Trap[];
   pools: Set<number>;
+  conveyors: Set<number>;
+  spores: Set<number>;
+  hidden: Set<number>;
   tentWall: Set<number>;
   tentFloor: Set<number>;
   exit: Vec | null;
   shots: Shot[];
+  enemyShots: EnemyShot[];
   bombs: Bomb[];
   balloons: Balloon[];
   clouds: Cloud[];
@@ -177,6 +184,7 @@ export interface World {
   lockSay: number;
   reaperTip: number;
   rockT: number;
+  shelfT: number;
   lightsT: number;
   dark: boolean;
   flick: boolean;

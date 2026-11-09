@@ -19,8 +19,8 @@ export function hurt(n: number, raw = false) {
   if (n >= 20) p.blink = 0.12;
 }
 
-const XP: Record<EnemyType, number> = { reaper: 15, lobber: 5, grunt: 3, biter: 1, boss: 80 };
-const POINTS: Record<EnemyType, number> = { reaper: 250, lobber: 25, grunt: 10, biter: 5, boss: 1000 };
+const XP: Record<EnemyType, number> = { reaper: 15, lobber: 5, grunt: 3, biter: 1, boss: 80, archer: 6 };
+const POINTS: Record<EnemyType, number> = { reaper: 250, lobber: 25, grunt: 10, biter: 5, boss: 1000, archer: 30 };
 
 export function killEnemy(e: Enemy) {
   if (e.dead) return;
@@ -82,6 +82,7 @@ export function usePotion() {
   }
   S.bombs = S.bombs.filter((b) => !inView(b.tx, b.ty));
   S.balloons = S.balloons.filter((b) => !inView(b.x, b.y));
+  S.enemyShots = S.enemyShots.filter((s) => !inView(s.x, s.y));
   S.clouds = S.clouds.filter((c) => !inView(c.x, c.y));
   for (const g of S.gens) if (g.alive && inView(g.x, g.y)) hitGen(g, 3);
   for (const c of S.coffins) if (c.alive && inView(c.x, c.y)) hitCoffin(c, 3);
@@ -113,9 +114,10 @@ export function spawnFrom(g: Spawner) {
   if (g.kind === "lobber") {
     if (S.enemies.filter((e) => e.den === g).length >= 3) return;
     list = ["lobber"];
-  } else list = g.n++ % 3 === 2 ? ["biter", "biter", "biter"] : ["grunt"];
+  } else list = g.n++ % 3 === 2 ? (S.area.style === "desert" ? ["archer"] : ["biter", "biter", "biter"]) : ["grunt"];
   for (const type of list) {
     const base = type === "lobber" ? { r: 11, hp: 2, speed: 48, throwCd: 1 + Math.random() }
+      : type === "archer" ? { r: 10, hp: 3, speed: 65, throwCd: 1 + Math.random() }
       : type === "biter" ? { r: 6, hp: 1, speed: 150 }
       : { r: 10, hp: g.tier, speed: 62 + g.tier * 8 };
     const e: Enemy = {
@@ -127,5 +129,6 @@ export function spawnFrom(g: Spawner) {
     S.enemies.push(e);
     if (type === "biter") sayOnce("biter", "Ankle biters. Small, fast, and hungry.");
     if (type === "lobber") sayOnce("lobber", "Something is throwing from behind the walls.");
+    if (type === "archer") sayOnce("archer", "Desert archers fire across quicksand. Keep moving.");
   }
 }

@@ -37,8 +37,13 @@ The start screen has a **Testing: start in** row to jump straight to any area.
   | 11–15 | Catacombs | 2-wide maze with walled chambers | Timed spike strips | Reapers drift through walls |
   | 16–20 | Plague Ward | Packed cells (binary space partition) | Bile pools that slow and burn | Lobber bombs leave poison clouds |
   | 21–25 | Carnival | Fenced plots, striped tents | Lights out: only eyes show | Wind-up biters; lobbers throw homing balloons |
+  | 26–30 | Sunken Archive | Long library rooms and aisles | Rising water slows the player | Drowned grunts emerge from shelves and move faster at high tide |
+  | 31–35 | Clockwork Foundry | Packed factory halls | Reversing conveyors and timed crushing presses | Conveyors move monsters too |
+  | 36–40 | Fungal Hollow | Winding root tunnels and ragged chambers | Disturbed spores release poisonous clouds | Monsters leave spore patches behind |
+  | 41–45 | Astral Observatory | Chamfered chambers and narrow bridges | Rotating beam reveals hidden shortcuts | Monsters move faster in the beam |
+  | 46–50 | Shifting Desert | Open plots divided by quicksand | Quicksand blocks movement but not shots | Spawners produce faster; archers fire across quicksand |
 
-  After floor 25 the cycle repeats, harder.
+  After floor 50 the cycle repeats, harder.
 - **Every floor is guaranteed winnable.** The exit is in a locked vault, colored gates open from matching levers, and each lever, food and a potion for every reaper are reachable in the right order. The test suite plays hundreds of floors to check this.
 - **Per-run leveling.** Kills and smashed spawners earn XP; each level pauses for a pick of three upgrades.
 
