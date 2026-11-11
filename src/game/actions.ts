@@ -64,14 +64,18 @@ export const inView = (x: number, y: number) => {
   return !!c && x > c.x - T && x < c.x + c.w + T && y > c.y - T && y < c.y + c.h + T;
 };
 
-/** Potion: clears everything on screen, including reapers and hazards. */
+const SHOT_POTION_RADIUS = 150;
+const POTION_RADIUS = SHOT_POTION_RADIUS * 2;
+
+/** Potion: clears nearby enemies and hazards; only close spawners take damage. */
 export function usePotion() {
   const p = S.p;
   if (p.potions <= 0) { say("No potions left."); return; }
   p.potions--;
   S.flash = reducedMotion() ? 0.2 : 0.45;
+  const inRange = (x: number, y: number) => Math.hypot(x - p.x, y - p.y) < POTION_RADIUS;
   let n = 0, reaper = false, bossKilled = false, bossHit = false;
-  for (const e of S.enemies) if (!e.dead && inView(e.x, e.y)) {
+  for (const e of S.enemies) if (!e.dead && inRange(e.x, e.y)) {
     if (e.type === "reaper") reaper = true;
     if (e.type === "boss") {
       e.hp -= 25; e.hit = 0.12;
@@ -80,20 +84,20 @@ export function usePotion() {
     } else killEnemy(e);
     n++;
   }
-  S.bombs = S.bombs.filter((b) => !inView(b.tx, b.ty));
-  S.balloons = S.balloons.filter((b) => !inView(b.x, b.y));
-  S.enemyShots = S.enemyShots.filter((s) => !inView(s.x, s.y));
-  S.clouds = S.clouds.filter((c) => !inView(c.x, c.y));
-  for (const g of S.gens) if (g.alive && inView(g.x, g.y)) hitGen(g, 3);
-  for (const c of S.coffins) if (c.alive && inView(c.x, c.y)) hitCoffin(c, 3);
-  S.bones = S.bones.filter((b) => !inView(b.x, b.y));
-  if (!bossKilled) say(bossHit ? "The champion staggers." : reaper ? "Death is undone." : n ? `The room goes quiet. ${n} down.` : "The room goes quiet.");
+  S.bombs = S.bombs.filter((b) => !inRange(b.tx, b.ty));
+  S.balloons = S.balloons.filter((b) => !inRange(b.x, b.y));
+  S.enemyShots = S.enemyShots.filter((s) => !inRange(s.x, s.y));
+  S.clouds = S.clouds.filter((c) => !inRange(c.x, c.y));
+  for (const g of S.gens) if (g.alive && Math.hypot(g.x - p.x, g.y - p.y) < SHOT_POTION_RADIUS) hitGen(g, 3);
+  for (const c of S.coffins) if (c.alive && inRange(c.x, c.y)) hitCoffin(c, 3);
+  S.bones = S.bones.filter((b) => !inRange(b.x, b.y));
+  if (!bossKilled) say(bossHit ? "The champion staggers." : reaper ? "Death is undone." : n ? `The blast clears a path. ${n} down.` : "The blast fades.");
 }
 
 /** A shot potion on the floor goes off in a smaller radius. */
 export function blast(x: number, y: number) {
   S.flash = reducedMotion() ? 0.12 : 0.25;
-  for (const e of S.enemies) if (!e.dead && Math.hypot(e.x - x, e.y - y) < 150) {
+  for (const e of S.enemies) if (!e.dead && Math.hypot(e.x - x, e.y - y) < SHOT_POTION_RADIUS) {
     if (e.type === "boss") {
       e.hp -= 15; e.hit = 0.12;
       if (e.hp <= 0) killEnemy(e);

@@ -19,7 +19,7 @@ Open the URL Vite prints. Controls:
 | Aim | Mouse pointer | Drag on the right side |
 | Fire | Space / J / left mouse button | FIRE button |
 | Class ability | E | Ability button |
-| Potion (clears the screen) | K / Q | POT button |
+| Potion (clears nearby enemies) | K / Q | POT button |
 | Pick class / upgrade | 1, 2, 3 | Tap |
 
 The start screen has a **Testing: start in** row to jump straight to any area.
@@ -46,6 +46,7 @@ The start screen has a **Testing: start in** row to jump straight to any area.
   After floor 50 the cycle repeats, harder.
 - **Every floor is guaranteed winnable.** The exit is in a locked vault, colored gates open from matching levers, and each lever, food and a potion for every reaper are reachable in the right order. The test suite plays hundreds of floors to check this.
 - **Per-run leveling.** Kills and smashed spawners earn XP; each level pauses for a pick of three upgrades.
+- **Local potion blasts.** Using a potion clears enemies and hazards within 300 pixels of you, twice the radius of shooting a floor potion. Used potions damage spawners only within 150 pixels.
 
 ## Scripts
 
