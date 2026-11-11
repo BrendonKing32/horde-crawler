@@ -153,7 +153,7 @@ function updateSpawners(dt: number) {
     g.hit = Math.max(0, g.hit - dt);
     g.t -= dt;
     if (g.t > 0) continue;
-    g.t = (2.8 - g.tier * 0.5) * (0.7 + Math.random() * 0.6) * (S.area.style === "desert" ? 0.45 : 1);
+    g.t = (2.8 - g.tier * 0.5) * 0.65 * (0.7 + Math.random() * 0.6) * (S.area.style === "desert" ? 0.45 : 1);
     if (Math.hypot(g.x - p.x, g.y - p.y) < 11 * T && S.enemies.length < 130) spawnFrom(g);
   }
 }
