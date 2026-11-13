@@ -10,7 +10,7 @@ import { blocked, move, solidAt } from "./world";
 export function updateHazards(dt: number) {
   bombs(dt);
   enemyShots(dt);
-  const inCloud = clouds(dt);
+  const inCloud = clouds(dt) && !S.p.ups.antitoxin;
   const onPool = pools(dt);
   const flooded = S.area.style === "archive" && highTide(S.time);
   S.p.slowF = inCloud ? 0.55 : onPool || flooded ? 0.65 : 1;
@@ -52,7 +52,7 @@ function bombs(dt: number) {
     b.dead = true;
     S.booms.push({ x: b.tx, y: b.ty, t: 0.35 });
     if (S.area.plague) S.clouds.push({ x: b.tx, y: b.ty, t: 4, r: 40, seed: Math.random() * 9 });
-    if (Math.hypot(p.x - b.tx, p.y - b.ty) < 34) hurt(mobDamage(28, S.depth));
+    if (!p.ups.blastShield && Math.hypot(p.x - b.tx, p.y - b.ty) < 34) hurt(mobDamage(28, S.depth));
   }
   S.bombs = S.bombs.filter((b) => !b.dead);
 }
@@ -69,7 +69,7 @@ function clouds(dt: number): boolean {
 function pools(dt: number): boolean {
   const p = S.p;
   const on = S.pools.size > 0 && S.pools.has(Math.floor(p.y / T) * S.cols + Math.floor(p.x / T));
-  if (!on) { p.poolT = 0; return false; }
+  if (!on || p.ups.antitoxin) { p.poolT = 0; return false; }
   p.poolT += dt;
   sayOnce("pool", "Bile. It clings and burns.");
   while (p.poolT >= 0.5) { p.poolT -= 0.5; hurt(1, true); p.hurt = Math.min(1, p.hurt + 0.05); }
@@ -130,7 +130,7 @@ function caveIns(dt: number) {
     if (r.t < r.dur) continue;
     r.dead = true;
     S.booms.push({ x: r.x, y: r.y, t: 0.35 });
-    if (Math.hypot(p.x - r.x, p.y - r.y) < 30) hurt(25);
+    if (!p.ups.blastShield && Math.hypot(p.x - r.x, p.y - r.y) < 30) hurt(25);
     for (const e of S.enemies)
       if (!e.dead && e.type !== "reaper" && !e.under && Math.hypot(e.x - r.x, e.y - r.y) < 30) { e.hp -= 3; e.hit = 0.1; if (e.hp <= 0) killEnemy(e); }
   }
@@ -147,7 +147,8 @@ function spikes() {
     if (tr.lastId !== id) { tr.lastId = id; tr.hitE.clear(); tr.hitP = false; }
     if (!tr.up) continue;
     if (!tr.hitP && Math.abs(p.x - tr.x) < 16 && Math.abs(p.y - tr.y) < 16) {
-      tr.hitP = true; hurt(tr.kind === "press" ? 18 : 12);
+      tr.hitP = true;
+      if (!p.ups.surefooted) hurt(tr.kind === "press" ? 18 : 12);
       if (tr.kind === "press") sayOnce("press", "Crushing presses. Watch the warning lights.");
       else sayOnce("trap", "Spike traps. Time your crossing.");
     }

@@ -107,7 +107,11 @@ export interface Trap extends Vec {
   hitE: Set<Enemy>;
 }
 
-export interface Shot extends Vec { vx: number; vy: number; life: number; dmg: number; pierce: number; hits: Set<Enemy>; dead?: boolean }
+export interface Shot extends Vec {
+  vx: number; vy: number; life: number; dmg: number; pierce: number; hits: Set<Enemy>; dead?: boolean;
+  style?: "explosive" | "ricochet";
+  bounces?: number;
+}
 export interface EnemyShot extends Vec { vx: number; vy: number; life: number }
 export interface Bomb { sx: number; sy: number; tx: number; ty: number; t: number; dur: number; dead?: boolean }
 export interface Balloon extends Vec { vx: number; vy: number; t: number; c: string; dead?: boolean }
