@@ -41,7 +41,10 @@ export function hitGen(g: Spawner, d: number) {
   if (!g.alive) return;
   g.hp -= d; g.hit = 0.12; S.p.score += 5;
   if (g.hp <= 0) {
-    g.alive = false; S.p.score += 100; S.smashed++; gainXp(10);
+    g.alive = false; S.p.score += 100; S.smashed++;
+    if (S.p.ups.scavenger) {
+      if (Math.random() < 0.3) S.pickups.push({ type: "F", x: g.x, y: g.y, alive: true });
+    } else gainXp(10);
     pop(g.x, g.y, "+100", C.torch);
     const left = S.gens.filter((x) => x.alive).length;
     say(left ? `Spawner down. ${left} to go.` : "Every spawner is silent.");
@@ -72,8 +75,10 @@ export function usePotion() {
   const p = S.p;
   if (p.potions <= 0) { say("No potions left."); return; }
   p.potions--;
+  if (p.ups.alchemist) p.abilityCd = 0;
   S.flash = reducedMotion() ? 0.2 : 0.45;
-  const inRange = (x: number, y: number) => Math.hypot(x - p.x, y - p.y) < POTION_RADIUS;
+  const radius = POTION_RADIUS * (p.ups.alchemist ? 0.75 : 1);
+  const inRange = (x: number, y: number) => Math.hypot(x - p.x, y - p.y) < radius;
   let n = 0, reaper = false, bossKilled = false, bossHit = false;
   for (const e of S.enemies) if (!e.dead && inRange(e.x, e.y)) {
     if (e.type === "reaper") reaper = true;
