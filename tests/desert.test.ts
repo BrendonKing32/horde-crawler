@@ -74,7 +74,7 @@ describe("desert", () => {
     }
   });
 
-  it("spawns three-health archers that shoot across quicksand but not walls", () => {
+  it("spawns depth-scaled archers that shoot across quicksand but not walls", () => {
     const previousDepth = settings.startDepth;
     try {
       settings.startDepth = 46;
@@ -86,7 +86,7 @@ describe("desert", () => {
       spawnFrom(g);
       const archer = world.enemies[0];
       expect(archer.type).toBe("archer");
-      expect(archer.hp).toBe(3);
+      expect(archer.hp).toBeCloseTo(16.5);
       archer.x = 8.5 * T; archer.y = 5.5 * T; archer.throwCd = 0; archer.speed = 0;
       world.p.x = 5.5 * T; world.p.y = 5.5 * T;
       world.grid[5][7] = "Q";

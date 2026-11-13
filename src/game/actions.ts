@@ -1,4 +1,5 @@
 import { C, T, reducedMotion } from "./constants";
+import { mobHealth } from "./difficulty";
 import { pop, say, sayOnce } from "./narrator";
 import { gainXp } from "./progression";
 import { S } from "./state";
@@ -59,7 +60,7 @@ export function hitCoffin(c: Coffin, d: number) {
   const r = Math.random();
   if (r < 0.4) { S.pickups.push({ type: "F", x: c.x, y: c.y, alive: true }); say("Something edible in that coffin."); }
   else if (r < 0.7) S.pickups.push({ type: "$", x: c.x, y: c.y, alive: true });
-  else { S.enemies.push({ type: "grunt", r: 10, hp: 2, speed: 80, x: c.x, y: c.y, cd: 0.6, side: 1, dead: false }); say("That coffin was occupied."); }
+  else { S.enemies.push({ type: "grunt", r: 10, hp: mobHealth(2, S.depth), speed: 80, x: c.x, y: c.y, cd: 0.6, side: 1, dead: false }); say("That coffin was occupied."); }
 }
 
 export const inView = (x: number, y: number) => {
@@ -130,7 +131,7 @@ export function spawnFrom(g: Spawner) {
       : type === "biter" ? { r: 6, hp: 1, speed: 150 }
       : { r: 10, hp: g.tier, speed: 62 + g.tier * 8 };
     const e: Enemy = {
-      type, ...base,
+      type, ...base, hp: mobHealth(base.hp, S.depth),
       x: tx * T + T / 2 + (Math.random() - 0.5) * 10, y: ty * T + T / 2 + (Math.random() - 0.5) * 10,
       cd: 0, side: Math.random() < 0.5 ? 1 : -1, dead: false, den: g,
     };
