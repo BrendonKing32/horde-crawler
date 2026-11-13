@@ -8,6 +8,7 @@ import { input } from "./input";
 import { pop, say, sayOnce, tickNarrator } from "./narrator";
 import { openLevelUp } from "./progression";
 import { S } from "./state";
+import type { Shot } from "./types";
 import { move, movePlayer, solidAt } from "./world";
 
 /** Advance the game by dt seconds. Only called while S.state === "play". */
@@ -93,7 +94,8 @@ function updatePlayer(dt: number) {
     const base = Math.atan2(p.face.y, p.face.x);
     for (let i = -s.split; i <= s.split; i++) {
       const a = base + i * 0.16, cx = Math.cos(a), cy = Math.sin(a);
-      S.shots.push({ x: p.x + cx * 13, y: p.y + cy * 13, vx: cx * s.shotSpeed, vy: cy * s.shotSpeed, life: s.life, dmg: s.dmg, pierce: s.pierce, hits: new Set() });
+      const style = p.ups.explosive ? "explosive" : p.ups.ricochet ? "ricochet" : undefined;
+      S.shots.push({ x: p.x + cx * 13, y: p.y + cy * 13, vx: cx * s.shotSpeed, vy: cy * s.shotSpeed, life: s.life, dmg: s.dmg * (style === "ricochet" ? 0.75 : 1), pierce: s.pierce, hits: new Set(), style, bounces: style === "ricochet" ? 1 : 0 });
     }
   }
   if (input.potionReq) { input.potionReq = false; usePotion(); }
@@ -103,46 +105,89 @@ function updatePlayer(dt: number) {
 
 function updateShots(dt: number) {
   for (const s of S.shots) {
-    s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt;
+    s.life -= dt;
     if (s.life <= 0) { s.dead = true; continue; }
-    const tx = Math.floor(s.x / T), ty = Math.floor(s.y / T);
-    if (solidAt(tx, ty, true)) {
-      const key = ty * S.cols + tx;
-      const g = S.genAt.get(key); if (g && g.alive) hitGen(g, s.dmg);
-      const cf = S.coffinAt.get(key); if (cf && cf.alive) hitCoffin(cf, s.dmg);
-      s.dead = true;
-      continue;
-    }
-    // friendly fire on pickups: food is destroyed, potions go off
-    for (const k of S.pickups) {
-      if (!k.alive || (k.type !== "F" && k.type !== "O")) continue;
-      if (Math.hypot(k.x - s.x, k.y - s.y) >= 12) continue;
-      k.alive = false; s.dead = true;
-      if (k.type === "F") { say("You shot the food. Bold."); pop(k.x, k.y, "food lost", C.blood); }
-      else { blast(k.x, k.y); say("Shot a potion. It went off anyway."); }
-      break;
-    }
-    if (s.dead) continue;
-    for (const b of S.balloons)
-      if (!b.dead && Math.hypot(b.x - s.x, b.y - s.y) < 11) { b.dead = true; s.dead = true; S.p.score += 2; S.booms.push({ x: b.x, y: b.y, t: 0.2 }); break; }
-    if (s.dead) continue;
-    for (const e of S.enemies) {
-      if (e.dead || Math.hypot(e.x - s.x, e.y - s.y) >= e.r + 3) continue;
-      if (e.under) continue;
-      if (e.type === "reaper") {
-        e.ping = 0.2; s.dead = true;
-        if (S.time > S.reaperTip) { S.reaperTip = S.time + 6; say("Shots won't touch it. Use a potion."); }
-        break;
+    const steps = s.style ? Math.max(1, Math.ceil(Math.hypot(s.vx, s.vy) * dt / 8)) : 1;
+    for (let i = 0; i < steps && !s.dead; i++) {
+      const nx = s.x + s.vx * dt / steps, ny = s.y + s.vy * dt / steps;
+      const tx = Math.floor(nx / T), ty = Math.floor(ny / T);
+      if (s.style === "ricochet" && s.bounces && solidAt(tx, ty, true)) {
+        const c = S.grid[ty]?.[tx];
+        if (c && "#tH".includes(c)) {
+          const hitX = solidAt(tx, Math.floor(s.y / T), true);
+          const hitY = solidAt(Math.floor(s.x / T), ty, true);
+          if (hitX || !hitY) s.vx = -s.vx;
+          if (hitY || !hitX) s.vy = -s.vy;
+          s.bounces--;
+          continue;
+        }
       }
-      if (s.hits.has(e)) continue;
-      s.hits.add(e);
-      e.hp -= s.dmg; e.hit = 0.08;
-      if (s.pierce > 0) s.pierce--; else s.dead = true;
-      if (e.hp <= 0) killEnemy(e);
-      if (s.dead) break;
+      s.x = nx; s.y = ny;
+      hitShot(s);
     }
   }
   S.shots = S.shots.filter((s) => !s.dead);
+}
+
+function hitShot(s: Shot) {
+  const tx = Math.floor(s.x / T), ty = Math.floor(s.y / T);
+  if (solidAt(tx, ty, true)) {
+    const key = ty * S.cols + tx;
+    if (s.style === "explosive") explodeShot(s);
+    const g = S.genAt.get(key); if (g && g.alive) hitGen(g, s.dmg);
+    const cf = S.coffinAt.get(key); if (cf && cf.alive) hitCoffin(cf, s.dmg);
+    s.dead = true;
+    return;
+  }
+  // friendly fire on pickups: food is destroyed, potions go off
+  for (const k of S.pickups) {
+    if (!k.alive || (k.type !== "F" && k.type !== "O")) continue;
+    if (Math.hypot(k.x - s.x, k.y - s.y) >= 12) continue;
+    if (s.style === "explosive") { explodeShot(s); s.dead = true; break; }
+    k.alive = false; s.dead = true;
+    if (k.type === "F") { say("You shot the food. Bold."); pop(k.x, k.y, "food lost", C.blood); }
+    else { blast(k.x, k.y); say("Shot a potion. It went off anyway."); }
+    break;
+  }
+  if (s.dead) return;
+  for (const b of S.balloons)
+    if (!b.dead && Math.hypot(b.x - s.x, b.y - s.y) < 11) { b.dead = true; s.dead = true; S.p.score += 2; S.booms.push({ x: b.x, y: b.y, t: 0.2 }); if (s.style === "explosive") explodeShot(s); break; }
+  if (s.dead) return;
+  for (const e of S.enemies) {
+    if (e.dead || Math.hypot(e.x - s.x, e.y - s.y) >= e.r + 3) continue;
+    if (e.under) continue;
+    if (s.hits.has(e)) continue;
+    if (s.style === "explosive") {
+      if (e.type === "reaper" && S.time > S.reaperTip) { S.reaperTip = S.time + 6; say("Shots won't touch it. Use a potion."); }
+      explodeShot(s); s.dead = true; break;
+    }
+    if (e.type === "reaper") {
+      e.ping = 0.2; s.dead = true;
+      if (S.time > S.reaperTip) { S.reaperTip = S.time + 6; say("Shots won't touch it. Use a potion."); }
+      break;
+    }
+    s.hits.add(e);
+    e.hp -= s.dmg; e.hit = 0.08;
+    if (s.pierce > 0) s.pierce--; else s.dead = true;
+    if (e.hp <= 0) killEnemy(e);
+    if (s.dead) break;
+  }
+}
+
+function explodeShot(s: Shot) {
+  const radius = 48;
+  S.booms.push({ x: s.x, y: s.y, t: 0.25 });
+  for (const e of S.enemies) {
+    if (e.dead || e.under || e.type === "reaper" || Math.hypot(e.x - s.x, e.y - s.y) >= radius + e.r) continue;
+    e.hp -= s.dmg; e.hit = 0.08;
+    if (e.hp <= 0) killEnemy(e);
+  }
+  for (const k of S.pickups) {
+    if (!k.alive || (k.type !== "F" && k.type !== "O") || Math.hypot(k.x - s.x, k.y - s.y) >= radius) continue;
+    k.alive = false;
+    if (k.type === "F") { say("You shot the food. Bold."); pop(k.x, k.y, "food lost", C.blood); }
+    else { blast(k.x, k.y); say("Shot a potion. It went off anyway."); }
+  }
 }
 
 /** Spawners only work while the player is within 11 tiles; tier sets the pace. */
