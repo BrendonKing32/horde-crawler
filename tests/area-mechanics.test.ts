@@ -127,6 +127,7 @@ describe("new area mechanics", () => {
       updateHazards(0.1);
       expect(world.enemies).toHaveLength(1);
       expect(world.enemies[0].type).toBe("grunt");
+      expect(world.enemies[0].hp).toBeCloseTo(7);
       expect(world.enemies[0].x).toBe(15.5 * T);
     } finally {
       settings.startDepth = previousDepth;

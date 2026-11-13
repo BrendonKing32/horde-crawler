@@ -1,5 +1,6 @@
 import { AREA, LEVERS, areaOf, buildFloor } from "../gen/generator";
 import { AREAS, CLASSES, T, type ClassId } from "./constants";
+import { mobHealth } from "./difficulty";
 import type { Carry, Coffin, Lever, Pickup, PickupType, Spawner, Trap, Vec, World } from "./types";
 
 /** The live floor. Reassigned by newFloor(); other modules read it through this live binding. */
@@ -115,7 +116,7 @@ export function newFloor(carry?: Carry): World {
       )) &&
       !pickups.some((k) => Math.floor(k.x / T) === x && Math.floor(k.y / T) === y),
     ) ?? [tx, ty];
-    const hp = 90 + Math.floor(depth / 5) * 20;
+    const hp = mobHealth(90, depth);
     S.enemies.push({
       type: "boss", r: 17, hp, maxHp: hp, speed: 58, x: bx * T + T / 2, y: by * T + T / 2,
       cd: 0, side: 1, dead: false, chargeCd: 2.2,

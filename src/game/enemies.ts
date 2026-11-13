@@ -1,5 +1,6 @@
 import { BALLOONS, T } from "./constants";
 import { hurt } from "./actions";
+import { mobDamage } from "./difficulty";
 import { say, sayOnce } from "./narrator";
 import { S } from "./state";
 import type { Enemy } from "./types";
@@ -84,7 +85,7 @@ function boss(e: Enemy, c: Ctx) {
     chaseStep(e, { ...c, sp: c.sp * 0.8 });
   }
   const d = Math.hypot(S.p.x - e.x, S.p.y - e.y);
-  if (d < e.r + S.p.r + 1 && e.cd <= 0) { hurt(12); e.cd = 0.75; }
+  if (d < e.r + S.p.r + 1 && e.cd <= 0) { hurt(mobDamage(12, S.depth)); e.cd = 0.75; }
 }
 
 const touching = (e: Enemy, c: Ctx) => c.d < e.r + S.p.r + 1;
@@ -96,10 +97,10 @@ function chaseStep(e: Enemy, c: Ctx) {
 
 function grunt(e: Enemy, c: Ctx) {
   chaseStep(e, c);
-  if (touching(e, c) && e.cd <= 0) { hurt(8); e.cd = 0.6; }
+  if (touching(e, c) && e.cd <= 0) { hurt(mobDamage(8, S.depth)); e.cd = 0.6; }
 }
 
-/** Immune to shots; drains 15 raw health 4x/sec on touch, vanishes after feeding 180. Catacombs: drifts through walls. */
+/** Immune to shots; drains depth-scaled raw health 4x/sec, vanishes after feeding 180. Catacombs: drifts through walls. */
 function reaper(e: Enemy, c: Ctx) {
   const p = S.p;
   e.ping = Math.max(0, (e.ping || 0) - c.dt);
@@ -114,10 +115,11 @@ function reaper(e: Enemy, c: Ctx) {
     e.inWall = solidAt(Math.floor(e.x / T), Math.floor(e.y / T));
   } else chaseStep(e, c);
   if (touching(e, c) && e.cd <= 0) {
-    hurt(15, true);
+    const damage = mobDamage(15, S.depth);
+    hurt(damage, true);
     p.hurt = Math.min(1, p.hurt + 0.25);
     e.cd = 0.25;
-    e.fed = (e.fed || 0) + 15;
+    e.fed = (e.fed || 0) + damage;
     if (e.fed >= 180) { e.dead = true; S.booms.push({ x: e.x, y: e.y, t: 0.35 }); say("Death has had its fill. For now."); }
   }
 }
@@ -157,7 +159,7 @@ function windUp(e: Enemy, c: Ctx) {
   const bs = c.sp * 0.8;
   if (!move(e, Math.cos(e.hd) * bs, 0)) e.hd = Math.PI - e.hd;
   if (!move(e, 0, Math.sin(e.hd) * bs)) e.hd = -e.hd;
-  if (touching(e, c) && e.cd <= 0) { hurt(3); e.cd = 0.3; e.hd += Math.PI; }
+  if (touching(e, c) && e.cd <= 0) { hurt(mobDamage(3, S.depth)); e.cd = 0.3; e.hd += Math.PI; }
   sayOnce("windup", "Wind-up toys. They march straight and bounce.");
 }
 
@@ -196,7 +198,7 @@ function wanderChase(e: Enemy, c: Ctx) {
   if (!okx || !oky) hd += Math.PI * (0.5 + Math.random());
   e.hd = hd;
   if (!e.under && touching(e, c) && e.cd <= 0) {
-    hurt(3); e.cd = 0.3;
+    hurt(mobDamage(3, S.depth)); e.cd = 0.3;
     if (Math.random() < 0.35) { e.mode = "scatter"; e.mt = 0.5 + Math.random() * 0.5; e.hd = Math.atan2(-dy, -dx) + (Math.random() - 0.5) * 1.2; }
   }
 }

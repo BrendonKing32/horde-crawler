@@ -2,6 +2,7 @@
 import { C, T } from "./constants";
 import { highTide, inAstralBeam } from "./area-mechanics";
 import { hurt, killEnemy } from "./actions";
+import { mobDamage, mobHealth } from "./difficulty";
 import { pop, sayOnce } from "./narrator";
 import { S } from "./state";
 import { blocked, move, solidAt } from "./world";
@@ -34,7 +35,7 @@ function enemyShots(dt: number) {
     for (let i = 0; i < steps; i++) {
       shot.x += shot.vx * travel / steps; shot.y += shot.vy * travel / steps;
       if (solidAt(Math.floor(shot.x / T), Math.floor(shot.y / T), true)) { hit = true; break; }
-      if (Math.hypot(shot.x - S.p.x, shot.y - S.p.y) < S.p.r + 3) { hurt(14); hit = true; break; }
+      if (Math.hypot(shot.x - S.p.x, shot.y - S.p.y) < S.p.r + 3) { hurt(mobDamage(14, S.depth)); hit = true; break; }
     }
     shot.life -= dt;
     if (!hit && shot.life > 0) remaining.push(shot);
@@ -51,7 +52,7 @@ function bombs(dt: number) {
     b.dead = true;
     S.booms.push({ x: b.tx, y: b.ty, t: 0.35 });
     if (S.area.plague) S.clouds.push({ x: b.tx, y: b.ty, t: 4, r: 40, seed: Math.random() * 9 });
-    if (Math.hypot(p.x - b.tx, p.y - b.ty) < 34) hurt(28);
+    if (Math.hypot(p.x - b.tx, p.y - b.ty) < 34) hurt(mobDamage(28, S.depth));
   }
   S.bombs = S.bombs.filter((b) => !b.dead);
 }
@@ -95,7 +96,7 @@ function lightsOut(dt: number) {
   if (S.dark) sayOnce("dark", "Lights out. Watch for eyes.");
 }
 
-/** Carnival balloons drift toward the player (slower than walking), pop on contact for 15. */
+/** Carnival balloons drift toward the player (slower than walking), pop for depth-scaled damage. */
 function balloons(dt: number) {
   const p = S.p;
   for (const b of S.balloons) {
@@ -103,7 +104,7 @@ function balloons(dt: number) {
     b.vx += ((bx / bd) * 58 - b.vx) * dt * 0.9;
     b.vy += ((by / bd) * 58 - b.vy) * dt * 0.9;
     b.x += b.vx * dt; b.y += b.vy * dt; b.t -= dt;
-    if (bd < p.r + 9) { b.dead = true; hurt(15); S.booms.push({ x: b.x, y: b.y, t: 0.25 }); }
+    if (bd < p.r + 9) { b.dead = true; hurt(mobDamage(15, S.depth)); S.booms.push({ x: b.x, y: b.y, t: 0.25 }); }
     else if (b.t <= 0) { b.dead = true; S.booms.push({ x: b.x, y: b.y, t: 0.2 }); }
   }
   S.balloons = S.balloons.filter((b) => !b.dead);
@@ -174,7 +175,7 @@ function drowned(dt: number, flooded: boolean) {
   }
   if (!candidates.length) return;
   const [x, y] = candidates[Math.floor(Math.random() * candidates.length)];
-  S.enemies.push({ type: "grunt", r: 10, hp: 2, speed: 78, x: (x + 0.5) * T, y: (y + 0.5) * T, cd: 0.5, side: 1, dead: false });
+  S.enemies.push({ type: "grunt", r: 10, hp: mobHealth(2, S.depth), speed: 78, x: (x + 0.5) * T, y: (y + 0.5) * T, cd: 0.5, side: 1, dead: false });
   S.booms.push({ x: (x + 0.5) * T, y: (y + 0.5) * T, t: 0.35 });
   sayOnce("drowned", "The drowned are emerging from the shelves.");
 }
@@ -213,7 +214,7 @@ function astralBeam() {
   }
 }
 
-/** Crypt: bone piles rise as a 1-hp grunt after 2.5s unless the player stomps them. */
+/** Crypt: bone piles rise as a weaker grunt after 2.5s unless the player stomps them. */
 function bones(dt: number) {
   const p = S.p;
   for (const b of S.bones) {
@@ -221,7 +222,7 @@ function bones(dt: number) {
     if (Math.hypot(p.x - b.x, p.y - b.y) < p.r + 8) { b.dead = true; p.score += 5; pop(b.x, b.y, "stomped", C.ink); continue; }
     if (b.t > 0) continue;
     b.dead = true;
-    const e = { type: "grunt" as const, r: 10, hp: 1, speed: 70, x: b.x, y: b.y, cd: 0.5, side: 1, dead: false, risen: true };
+    const e = { type: "grunt" as const, r: 10, hp: mobHealth(1, S.depth), speed: 70, x: b.x, y: b.y, cd: 0.5, side: 1, dead: false, risen: true };
     if (!blocked(e)) { S.enemies.push(e); sayOnce("risen", "The dead get back up here. Stomp the bones."); }
   }
   S.bones = S.bones.filter((b) => !b.dead);

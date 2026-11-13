@@ -44,6 +44,7 @@ The start screen has a **Testing: start in** row to jump straight to any area.
   | 46–50 | Shifting Desert | Open plots divided by quicksand | Quicksand blocks movement but not shots | Spawners produce faster; archers fire across quicksand |
 
   After floor 50 the cycle repeats, harder.
+- **Scaling monsters.** Floor 1 keeps base stats; each later floor adds 10% of base mob health and 5% of base mob damage, without resetting between areas or after floor 50. Champions use the same curve instead of their old health bonus every five floors. Melee hits, arrows, bombs, balloons and reaper drains scale; environmental damage and potion effects do not. Reapers remain immune to shots and vanish after feeding on 180 health.
 - **Every floor is guaranteed winnable.** The exit is in a locked vault, colored gates open from matching levers, and each lever, food and a potion for every reaper are reachable in the right order. The test suite plays hundreds of floors to check this.
 - **Per-run leveling.** Kills and smashed spawners earn XP; each level pauses for a pick of three upgrades.
 - **Local potion blasts.** Using a potion clears enemies and hazards within 300 pixels of you, twice the radius of shooting a floor potion. Used potions damage spawners only within 150 pixels.
