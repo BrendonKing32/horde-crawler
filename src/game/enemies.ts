@@ -1,10 +1,10 @@
 import { BALLOONS, T } from "./constants";
 import { hurt } from "./actions";
-import { mobDamage } from "./difficulty";
+import { mobDamage, mobHealth } from "./difficulty";
 import { say, sayOnce } from "./narrator";
 import { S } from "./state";
 import type { Enemy } from "./types";
-import { move, solidAt } from "./world";
+import { blocked, move, solidAt } from "./world";
 import { highTide, inAstralBeam } from "./area-mechanics";
 
 /** Per-enemy context computed once per frame. */
@@ -38,6 +38,8 @@ export function updateEnemies(dt: number) {
     else if (e.type === "reaper") reaper(e, c);
     else if (e.type === "lobber") lobber(e, c);
     else if (e.type === "archer") archer(e, c);
+    else if (e.type === "shieldbearer") shieldbearer(e, c);
+    else if (e.type === "summoner") summoner(e, c);
     else if (e.type === "biter") biter(e, c);
     else grunt(e, c);
   }
@@ -98,6 +100,58 @@ function chaseStep(e: Enemy, c: Ctx) {
 function grunt(e: Enemy, c: Ctx) {
   chaseStep(e, c);
   if (touching(e, c) && e.cd <= 0) { hurt(mobDamage(8, S.depth)); e.cd = 0.6; }
+}
+
+function shieldbearer(e: Enemy, c: Ctx) {
+  const angle = Math.atan2(e.face?.y ?? c.uy, e.face?.x ?? c.ux);
+  const target = Math.atan2(c.uy, c.ux);
+  const delta = Math.atan2(Math.sin(target - angle), Math.cos(target - angle));
+  const turned = angle + Math.max(-2.4 * c.dt, Math.min(2.4 * c.dt, delta));
+  e.face = { x: Math.cos(turned), y: Math.sin(turned) };
+  chaseStep(e, { ...c, sp: c.sp * 0.85 });
+  if (touching(e, c) && e.cd <= 0) { hurt(mobDamage(7, S.depth)); e.cd = 0.8; }
+}
+
+function summoner(e: Enemy, c: Ctx) {
+  if (c.d > 7 * T) chaseStep(e, { ...c, sp: c.sp * 0.75 });
+  else if (c.d < 4 * T) {
+    move(e, -c.ux * c.sp, 0);
+    move(e, 0, -c.uy * c.sp);
+  }
+
+  if (e.summonWind !== undefined) {
+    e.summonWind -= c.dt;
+    if (e.summonWind <= 0) {
+      summonGrunt(e);
+      e.summonWind = undefined;
+      e.summonCd = 4;
+    }
+  } else {
+    e.summonCd = (e.summonCd ?? 3) - c.dt;
+    if (e.summonCd <= 0) e.summonWind = 0.8;
+  }
+}
+
+function summonGrunt(e: Enemy) {
+  if (S.enemies.length >= 130 || S.enemies.filter((mob) => !mob.dead && mob.summoned).length >= 4) return;
+  const tx = Math.floor(e.x / T), ty = Math.floor(e.y / T);
+  const spots: [number, number][] = [];
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    if (!dx && !dy) continue;
+    const x = (tx + dx + 0.5) * T, y = (ty + dy + 0.5) * T;
+    if (blocked({ x, y, r: 10 }) || Math.hypot(x - S.p.x, y - S.p.y) < 2 * T) continue;
+    if (S.enemies.some((mob) => !mob.dead && Math.hypot(x - mob.x, y - mob.y) < 18)) continue;
+    spots.push([tx + dx, ty + dy]);
+  }
+  if (!spots.length) return;
+  const [x, y] = spots[(Math.random() * spots.length) | 0];
+  const grunt: Enemy = {
+    type: "grunt", r: 8, hp: mobHealth(1, S.depth), speed: 68,
+    x: (x + 0.5) * T, y: (y + 0.5) * T,
+    cd: 0.5, side: 1, dead: false, summoned: true,
+  };
+  S.enemies.push(grunt);
+  S.booms.push({ x: grunt.x, y: grunt.y, t: 0.25 });
 }
 
 /** Immune to shots; drains depth-scaled raw health 4x/sec, vanishes after feeding 180. Catacombs: drifts through walls. */

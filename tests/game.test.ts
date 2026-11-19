@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { blast, hitCoffin, hitGen, spawnFrom, usePotion } from "../src/game/actions";
+import { blast, hitCoffin, hitGen, killEnemy, spawnFrom, usePotion } from "../src/game/actions";
 import { AREAS, T } from "../src/game/constants";
 import { updateEnemies } from "../src/game/enemies";
 import { updateHazards } from "../src/game/hazards";
@@ -220,6 +220,63 @@ describe("spawner balance", () => {
       update(0.002);
       expect(world.enemies).toHaveLength(2);
     }
+  });
+});
+
+describe("new horde enemies", () => {
+  it("adds shieldbearers and summoners to the horde spawn cycle", () => {
+    const world = combatFloor(1);
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+    const den = { ...world.gens[0], kind: "horde" as const, tx: 8, ty: 8 };
+    spawnFrom({ ...den, n: 4 });
+    expect(world.enemies[0].type).toBe("shieldbearer");
+    expect(world.enemies[0].face).toBeDefined();
+
+    world.enemies = [];
+    spawnFrom({ ...den, n: 5 });
+    expect(world.enemies).toHaveLength(1);
+    expect(world.enemies[0].type).toBe("summoner");
+    expect(world.enemies[0].hp).toBe(3);
+    const xp = world.p.xp;
+    killEnemy(world.enemies[0]);
+    expect(world.p.xp - xp).toBe(8);
+  });
+
+  it("blocks shieldbearer shots from the front but not from behind", () => {
+    const world = combatFloor(1);
+    const target = { ...enemy(world.p.x + 80, world.p.y, "shieldbearer"), face: { x: -1, y: 0 } };
+    world.enemies = [target];
+    world.shots = [{ x: target.x - 8, y: target.y, vx: 100, vy: 0, life: 1, dmg: 1, pierce: 0, hits: new Set() }];
+    update(0);
+    expect(target.hp).toBe(100);
+    expect(world.shots).toHaveLength(0);
+
+    world.shots = [{ x: target.x + 8, y: target.y, vx: -100, vy: 0, life: 1, dmg: 1, pierce: 0, hits: new Set() }];
+    update(0);
+    expect(target.hp).toBe(99);
+  });
+
+  it("telegraphs summoning, then creates a capped summoned grunt", () => {
+    const world = combatFloor(1);
+    const caster = { ...enemy(world.p.x + 6 * T, world.p.y, "summoner"), summonCd: 0.05 };
+    world.enemies = [caster];
+    updateEnemies(0.1);
+    expect(caster.summonWind).toBeCloseTo(0.8);
+    updateEnemies(0.79);
+    expect(world.enemies).toHaveLength(1);
+    updateEnemies(0.02);
+    expect(world.enemies).toHaveLength(2);
+    expect(world.enemies[1].type).toBe("grunt");
+    expect(world.enemies[1].summoned).toBe(true);
+
+    world.enemies.push(...Array.from({ length: 3 }, (_, i) => ({
+      ...enemy(world.p.x + (8 + i) * T, world.p.y),
+      summoned: true,
+    })));
+    caster.summonCd = 0;
+    caster.summonWind = 0;
+    updateEnemies(0.01);
+    expect(world.enemies.filter((mob) => mob.summoned)).toHaveLength(4);
   });
 });
 

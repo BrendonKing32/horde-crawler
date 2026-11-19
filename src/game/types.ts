@@ -41,7 +41,7 @@ export interface Player extends Vec {
   dashT: number;
 }
 
-export type EnemyType = "grunt" | "biter" | "lobber" | "reaper" | "boss" | "archer";
+export type EnemyType = "grunt" | "biter" | "lobber" | "reaper" | "boss" | "archer" | "shieldbearer" | "summoner";
 export type BiterMode = "wander" | "chase" | "scatter";
 
 export interface Enemy extends Vec {
@@ -54,6 +54,10 @@ export interface Enemy extends Vec {
   dead: boolean;
   hit?: number;
   den?: Spawner;
+  face?: Vec;
+  summonCd?: number;
+  summonWind?: number;
+  summoned?: boolean;
   /** Crypt: already rose once. */
   risen?: boolean;
   // biter

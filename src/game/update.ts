@@ -166,6 +166,16 @@ function hitShot(s: Shot) {
       if (S.time > S.reaperTip) { S.reaperTip = S.time + 6; say("Shots won't touch it. Use a potion."); }
       break;
     }
+    if (e.type === "shieldbearer") {
+      const dx = S.p.x - e.x, dy = S.p.y - e.y, d = Math.hypot(dx, dy) || 1;
+      const face = e.face ?? { x: dx / d, y: dy / d };
+      const speed = Math.hypot(s.vx, s.vy) || 1;
+      if ((face.x * -s.vx + face.y * -s.vy) / speed > 0.5) {
+        e.hit = 0.08;
+        s.dead = true;
+        break;
+      }
+    }
     s.hits.add(e);
     e.hp -= s.dmg; e.hit = 0.08;
     if (s.pierce > 0) s.pierce--; else s.dead = true;
