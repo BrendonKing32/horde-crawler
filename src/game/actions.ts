@@ -20,8 +20,8 @@ export function hurt(n: number, raw = false) {
   if (n >= 20) p.blink = 0.12;
 }
 
-const XP: Record<EnemyType, number> = { reaper: 15, lobber: 5, grunt: 3, biter: 1, boss: 80, archer: 6 };
-const POINTS: Record<EnemyType, number> = { reaper: 250, lobber: 25, grunt: 10, biter: 5, boss: 1000, archer: 30 };
+const XP: Record<EnemyType, number> = { reaper: 15, lobber: 5, grunt: 3, biter: 1, boss: 80, archer: 6, shieldbearer: 6, summoner: 8 };
+const POINTS: Record<EnemyType, number> = { reaper: 250, lobber: 25, grunt: 10, biter: 5, boss: 1000, archer: 30, shieldbearer: 30, summoner: 50 };
 
 export function killEnemy(e: Enemy) {
   if (e.dead) return;
@@ -124,21 +124,35 @@ export function spawnFrom(g: Spawner) {
   if (g.kind === "lobber") {
     if (S.enemies.filter((e) => e.den === g).length >= 3) return;
     list = ["lobber"];
-  } else list = g.n++ % 3 === 2 ? (S.area.style === "desert" ? ["archer"] : ["biter", "biter", "biter"]) : ["grunt"];
+  } else {
+    const spawn = g.n++ % 6;
+    list = spawn === 5 ? ["summoner"]
+      : spawn === 4 ? ["shieldbearer"]
+        : spawn % 3 === 2 ? (S.area.style === "desert" ? ["archer"] : ["biter", "biter", "biter"])
+        : ["grunt"];
+  }
   for (const type of list) {
     const base = type === "lobber" ? { r: 11, hp: 2, speed: 48, throwCd: 1 + Math.random() }
       : type === "archer" ? { r: 10, hp: 3, speed: 65, throwCd: 1 + Math.random() }
       : type === "biter" ? { r: 6, hp: 1, speed: 150 }
+      : type === "shieldbearer" ? { r: 12, hp: 5, speed: 48 }
+      : type === "summoner" ? { r: 11, hp: 3, speed: 46, summonCd: 2.5 }
       : { r: 10, hp: g.tier, speed: 62 + g.tier * 8 };
     const e: Enemy = {
       type, ...base, hp: mobHealth(base.hp, S.depth),
       x: tx * T + T / 2 + (Math.random() - 0.5) * 10, y: ty * T + T / 2 + (Math.random() - 0.5) * 10,
       cd: 0, side: Math.random() < 0.5 ? 1 : -1, dead: false, den: g,
     };
+    if (type === "shieldbearer") {
+      const dx = S.p.x - e.x, dy = S.p.y - e.y, d = Math.hypot(dx, dy) || 1;
+      e.face = { x: dx / d, y: dy / d };
+    }
     if (blocked(e)) continue;
     S.enemies.push(e);
     if (type === "biter") sayOnce("biter", "Ankle biters. Small, fast, and hungry.");
     if (type === "lobber") sayOnce("lobber", "Something is throwing from behind the walls.");
     if (type === "archer") sayOnce("archer", "Desert archers fire across quicksand. Keep moving.");
+    if (type === "shieldbearer") sayOnce("shieldbearer", "Shieldbearers block frontal shots. Get around them.");
+    if (type === "summoner") sayOnce("summoner", "Summoners call in grunts. Stop them before they finish.");
   }
 }

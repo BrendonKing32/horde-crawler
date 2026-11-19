@@ -332,6 +332,31 @@ function drawEnemies(now: number) {
       ctx.fillStyle = "#513321"; ctx.fillRect(e.x - 6, e.y - 3, 12, 3);
       ctx.strokeStyle = "#f4d395"; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(e.x + dx / d * 6, e.y + dy / d * 6, 8, Math.atan2(dy, dx) - 1.1, Math.atan2(dy, dx) + 1.1); ctx.stroke();
+    } else if (e.type === "shieldbearer") {
+      const fx = e.face?.x ?? dx / d, fy = e.face?.y ?? dy / d;
+      const sx = -fy, sy = fx, cx = e.x + fx * 8, cy = e.y + fy * 8;
+      ctx.fillStyle = (e.hit || 0) > 0 ? C.ink : "#8193ad";
+      ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, 7); ctx.fill();
+      ctx.fillStyle = "#222c3a"; ctx.strokeStyle = "#c4d2e6"; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cx + sx * 8, cy + sy * 8);
+      ctx.lineTo(cx + fx * 5 + sx * 7, cy + fy * 5 + sy * 7);
+      ctx.lineTo(cx + fx * 7, cy + fy * 7);
+      ctx.lineTo(cx + fx * 5 - sx * 7, cy + fy * 5 - sy * 7);
+      ctx.lineTo(cx - sx * 8, cy - sy * 8);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+    } else if (e.type === "summoner") {
+      ctx.fillStyle = (e.hit || 0) > 0 ? C.ink : "#8a63b8";
+      ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, 7); ctx.fill();
+      ctx.fillStyle = "#352345";
+      ctx.beginPath(); ctx.moveTo(e.x - 8, e.y - 5); ctx.lineTo(e.x, e.y - e.r - 3); ctx.lineTo(e.x + 8, e.y - 5); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#f0c5ff";
+      ctx.fillRect(e.x - 5 + dx / d * 2, e.y - 2 + dy / d * 2, 3, 3);
+      ctx.fillRect(e.x + 2 + dx / d * 2, e.y - 2 + dy / d * 2, 3, 3);
+      if ((e.summonWind ?? 0) > 0) {
+        ctx.strokeStyle = "#d8a5ff"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 5 + Math.sin(now * 12) * 2, 0, 7); ctx.stroke();
+      }
     } else if (e.type === "lobber") {
       const lift = (e.wind || 0) > 0 ? -5 : 0, ux = dx / d, uy = dy / d;
       ctx.fillStyle = "#3b2f5c"; ctx.beginPath(); ctx.arc(e.x - ux * 7, e.y - uy * 7 - 2, 6.5, 0, 7); ctx.fill();
@@ -478,7 +503,8 @@ function drawScreenOverlays(camX: number, camY: number, now: number) {
   if (S.dark) for (const e of S.enemies) { // glowing eyes in the dark
     const ex = (e.x - camX) * zoom, ey = (e.y - camY) * zoom;
     if (ex < -10 || ey < -10 || ex > cw + 10 || ey > ch + 10) continue;
-    ctx.fillStyle = e.type === "reaper" ? "#f4f0ff" : e.type === "biter" ? "#d9f27a" : "#ff5a6e";
+    ctx.fillStyle = e.type === "reaper" ? "#f4f0ff" : e.type === "biter" ? "#d9f27a"
+      : e.type === "shieldbearer" ? "#c4d2e6" : e.type === "summoner" ? "#f0c5ff" : "#ff5a6e";
     ctx.fillRect(ex - 4 * zoom, ey - 3 * zoom, 2.5 * zoom, 2.5 * zoom); ctx.fillRect(ex + 1.5 * zoom, ey - 3 * zoom, 2.5 * zoom, 2.5 * zoom);
   }
   if (p.hurt > 0.02) {
