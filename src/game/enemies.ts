@@ -262,7 +262,11 @@ function separate() {
   const live = S.enemies.filter((e) => !e.dead);
   for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) {
     const A = live[i], B = live[j];
-    const dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy), m = A.r + B.r - 2;
+    const dx = B.x - A.x, m = A.r + B.r - 2;
+    if (Math.abs(dx) >= m) continue;
+    const dy = B.y - A.y;
+    if (Math.abs(dy) >= m) continue;
+    const d = Math.hypot(dx, dy);
     if (d > 0 && d < m) { const k = (m - d) / 2 / d; move(A, -dx * k, -dy * k); move(B, dx * k, dy * k); }
   }
   S.enemies = live;

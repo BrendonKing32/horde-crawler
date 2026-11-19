@@ -1,5 +1,6 @@
 import { GATES } from "../gen/generator";
 import { BULBS, C, DISPLAY_FONT, PAIR, T, hash, reducedMotion } from "./constants";
+import { inView } from "./actions";
 import { input } from "./input";
 import { blackoutRadii } from "./lighting";
 import { highTide, inAstralBeam } from "./area-mechanics";
@@ -230,7 +231,7 @@ function drawGate(px: number, py: number, col: string, k: number) {
 // ---------------------------------------------------------------- objects
 
 function drawFloorObjects(now: number) {
-  if (S.exit) {
+  if (S.exit && inView(S.exit.x, S.exit.y)) {
     const e = S.exit, pulse = reduce ? 0 : Math.sin(now * 3) * 2;
     ctx.fillStyle = "rgba(242,165,65,.12)"; ctx.beginPath(); ctx.arc(e.x, e.y, 22 + pulse, 0, 7); ctx.fill();
     ctx.strokeStyle = C.torch; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(e.x, e.y, 14 + pulse / 2, 0, 7); ctx.stroke();
@@ -240,7 +241,7 @@ function drawFloorObjects(now: number) {
     ctx.fillText(locked ? "LOCKED" : "EXIT", e.x, e.y + 3.5);
   }
   for (const k of S.pickups) {
-    if (!k.alive) continue;
+    if (!k.alive || !inView(k.x, k.y)) continue;
     const { x, y } = k;
     if (k.type === "F") {
       ctx.fillStyle = "#c97a3c"; ctx.beginPath(); ctx.ellipse(x - 2, y, 8, 6, -0.5, 0, 7); ctx.fill();
@@ -258,6 +259,7 @@ function drawFloorObjects(now: number) {
     }
   }
   for (const tr of S.traps) {
+    if (!inView(tr.x, tr.y)) continue;
     const px = tr.tx * T, py = tr.ty * T;
     if (tr.kind === "press") {
       ctx.fillStyle = tr.up ? "#d67236" : tr.warn ? "#ffcc66" : "#4f4033";
@@ -273,13 +275,14 @@ function drawFloorObjects(now: number) {
     }
   }
   for (const b of S.bones) {
+    if (!inView(b.x, b.y)) continue;
     const sh = b.t < 0.8 && !reduce ? Math.sin(now * 40) * 1.5 : 0;
     ctx.fillStyle = C.ink; ctx.globalAlpha = 0.75;
     ctx.fillRect(b.x - 8 + sh, b.y + 2, 10, 2.5); ctx.fillRect(b.x - 2 - sh, b.y - 2, 9, 2.5);
     ctx.beginPath(); ctx.arc(b.x + 5 + sh, b.y + 4, 3.5, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
   }
   for (const c of S.coffins) {
-    if (!c.alive) continue;
+    if (!c.alive || !inView(c.x, c.y)) continue;
     const px = c.tx * T, py = c.ty * T;
     ctx.fillStyle = c.hit > 0 ? C.ink : "#4a3a2a";
     ctx.beginPath();
@@ -289,6 +292,7 @@ function drawFloorObjects(now: number) {
     ctx.fillStyle = "#8a7356"; ctx.fillRect(px + 15, py + 8, 2, 14); ctx.fillRect(px + 11, py + 12, 10, 2);
   }
   for (const l of S.levers) {
+    if (!inView(l.x, l.y)) continue;
     const col = PAIR[l.id], { x, y } = l, a = l.on ? 0.6 : -0.6, hx = x + Math.sin(a) * 13, hy = y + 4 - Math.cos(a) * 13;
     if (!l.on) { ctx.globalAlpha = 0.2 + (reduce ? 0 : 0.08 * Math.sin(now * 4)); ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, 16, 0, 7); ctx.fill(); ctx.globalAlpha = 1; }
     ctx.fillStyle = "#2a2f3b"; ctx.fillRect(x - 9, y + 3, 18, 6); ctx.fillStyle = C.dim; ctx.fillRect(x - 9, y + 3, 18, 2);
@@ -296,6 +300,7 @@ function drawFloorObjects(now: number) {
     ctx.fillStyle = col; ctx.beginPath(); ctx.arc(hx, hy, 4, 0, 7); ctx.fill();
   }
   for (const g of S.gens) {
+    if (!inView(g.x, g.y)) continue;
     const px = g.tx * T, py = g.ty * T;
     if (!g.alive) { ctx.fillStyle = "#2a2f3b"; ctx.fillRect(px + 5, py + 12, 9, 8); ctx.fillRect(px + 16, py + 16, 10, 7); ctx.fillRect(px + 10, py + 6, 7, 6); continue; }
     ctx.fillStyle = g.hit > 0 ? C.ink : "#2b1720"; ctx.fillRect(px + 2, py + 2, T - 4, T - 4);
@@ -314,6 +319,7 @@ function drawFloorObjects(now: number) {
 function drawEnemies(now: number) {
   const p = S.p;
   for (const e of S.enemies) {
+    if (!inView(e.x, e.y)) continue;
     if (S.area.style === "observatory" && inAstralBeam(e.x, e.y, S.mw, S.mh, S.time)) {
       ctx.strokeStyle = "#c5bcff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 5, 0, 7); ctx.stroke();
     }

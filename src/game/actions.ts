@@ -63,6 +63,7 @@ export function hitCoffin(c: Coffin, d: number) {
   else { S.enemies.push({ type: "grunt", r: 10, hp: mobHealth(2, S.depth), speed: 80, x: c.x, y: c.y, cd: 0.6, side: 1, dead: false }); say("That coffin was occupied."); }
 }
 
+/** Include a tile of padding for sprites that overlap the viewport edges. */
 export const inView = (x: number, y: number) => {
   const c = S.cam;
   return !!c && x > c.x - T && x < c.x + c.w + T && y > c.y - T && y < c.y + c.h + T;
