@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { AREA, GATES, LEVERS, areaOf, buildFloor, type FloorMap } from "../src/gen/generator";
+import { archive, caverns, catacombs, crypt, fairgrounds, foundry, hollow, makeKit, observatory, plagueWard } from "../src/gen/layouts";
+import { makeRand } from "../src/gen/rng";
 
 type Pt = [number, number];
 const N4: Pt[] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -99,12 +101,37 @@ describe("floor generator", () => {
     expect(buildFloor(1234, 7).join("\n")).toBe(buildFloor(1234, 7).join("\n"));
   });
 
+  it("fills the larger footprint with rooms in every layout", () => {
+    for (const layout of [crypt, caverns, catacombs, plagueWard, fairgrounds, archive, foundry, hollow, observatory]) {
+      const samples = Array.from({ length: 8 }, (_, seed) => layout(makeKit(makeRand(seed * 7919))))
+        .filter((rooms) => rooms !== null);
+      expect(samples.length, layout.name).toBeGreaterThan(0);
+      expect(samples.reduce((sum, rooms) => sum + rooms.length, 0) / samples.length, layout.name).toBeGreaterThan(15);
+      for (const rooms of samples) {
+        expect(Math.max(...rooms.map((r) => r.x + r.w)), layout.name).toBeGreaterThan(52);
+        expect(Math.max(...rooms.map((r) => r.y + r.h)), layout.name).toBeGreaterThan(38);
+      }
+    }
+  });
+
+  it("maintains spawner and supply density on larger floors", () => {
+    for (let depth = 1; depth <= 50; depth += 5) {
+      const maps = Array.from({ length: 4 }, (_, seed) => buildFloor(seed * 7919 + depth, depth));
+      const average = (symbols: string) => maps.reduce((sum, m) =>
+        sum + [...symbols].reduce((n, c) => n + find(m, c).length, 0), 0) / maps.length;
+      expect(average("GL"), `spawners at depth ${depth}`).toBeGreaterThanOrEqual(depth === 1 ? 15 : 26);
+      expect(average("F"), `food at depth ${depth}`).toBeGreaterThanOrEqual(11);
+      expect(average("R"), `reapers at depth ${depth}`).toBeGreaterThanOrEqual(depth === 1 ? 2 : 8);
+      expect(average("O"), `potions at depth ${depth}`).toBeGreaterThanOrEqual(average("R"));
+    }
+  }, 30_000);
+
   for (let depth = 1; depth <= 50; depth++) {
     it(`floor ${depth}: every floor is winnable and follows the placement rules`, () => {
       for (let s = 0; s < FLOORS_PER_DEPTH; s++) {
         const m = buildFloor(s * 7919 + depth, depth);
-        expect(m.length).toBe(32);
-        expect(m.every((row) => row.length === 44)).toBe(true);
+        expect(m.length).toBe(48);
+        expect(m.every((row) => row.length === 66)).toBe(true);
         expect(find(m, "P")).toHaveLength(1);
         expect(find(m, "X")).toHaveLength(1);
         // every gate on the floor has exactly one matching lever
@@ -127,7 +154,7 @@ describe("floor generator", () => {
         if (area === AREA.OBSERVATORY) for (let i = 0; i <= 3; i++) {
           const before = reachableIgnoringObjects(m, GATES.slice(0, i), false);
           const after = reachableIgnoringObjects(m, GATES.slice(0, i), true);
-          for (const key of after) if (m[Math.floor(key / 44)][key % 44] !== "H")
+          for (const key of after) if (m[Math.floor(key / m[0].length)][key % m[0].length] !== "H")
             expect(before.has(key), `revealed passage bypassed a gate at seed ${s * 7919 + depth}`).toBe(true);
         }
       }

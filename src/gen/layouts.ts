@@ -8,8 +8,11 @@
  */
 import type { Rand } from "./rng";
 
-export const W = 44;
-export const H = 32;
+export const W = 66;
+export const H = 48;
+
+/** Preserve content density relative to the original 44x32 floors. */
+export const scaledCount = (n: number): number => Math.round(n * W * H / (44 * 32));
 
 export type Pt = [number, number];
 export type Grid = string[][];
@@ -44,7 +47,7 @@ export function makeKit(rand: Rand): LayoutKit {
   const dist = (a: Room, b: Room) => Math.abs(a.cx - b.cx) + Math.abs(a.cy - b.cy);
   const placeRooms: LayoutKit["placeRooms"] = (max, minW, maxW, minH, maxH) => {
     const rs: Room[] = [];
-    for (let i = 0; i < 300 && rs.length < max; i++) {
+    for (let i = 0; i < scaledCount(300) && rs.length < max; i++) {
       const w = rand.int(minW, maxW), h = rand.int(minH, maxH), x = rand.int(1, W - w - 1), y = rand.int(1, H - h - 1);
       if (rs.some((r) => x < r.x + r.w + 2 && x + w + 2 > r.x && y < r.y + r.h + 2 && y + h + 2 > r.y)) continue;
       rs.push({ x, y, w, h, cx: x + (w >> 1), cy: y + (h >> 1) });
@@ -54,7 +57,7 @@ export function makeKit(rand: Rand): LayoutKit {
   const fillRoom = (r: Room) => {
     for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) g[y][x] = ".";
   };
-  /** Connect rooms with a minimum spanning tree (by Manhattan distance), plus two random extra links for loops. */
+  /** Connect rooms with a minimum spanning tree (by Manhattan distance), plus extra links for loops. */
   const mst: LayoutKit["mst"] = (rs, link) => {
     const tree = [rs[0]], rest = rs.slice(1);
     while (rest.length) {
@@ -64,7 +67,7 @@ export function makeKit(rand: Rand): LayoutKit {
       link(a, b);
       tree.push(rest.splice(bi, 1)[0]);
     }
-    for (let i = 0; i < 2; i++) { const a = rand.pick(rs), b = rand.pick(rs); if (a !== b) link(a, b); }
+    for (let i = 0; i < scaledCount(2); i++) { const a = rand.pick(rs), b = rand.pick(rs); if (a !== b) link(a, b); }
   };
   return { g, rand, ok, carve, placeRooms, fillRoom, mst };
 }
@@ -80,7 +83,7 @@ function lCorridor(k: LayoutKit, a: Room, b: Room) {
 
 /** CRYPT: rectangular rooms joined by straight corridors. */
 export function crypt(k: LayoutKit): Room[] {
-  const rooms = k.placeRooms(12, 5, 10, 4, 8);
+  const rooms = k.placeRooms(scaledCount(12), 5, 10, 4, 8);
   rooms.forEach(k.fillRoom);
   k.mst(rooms, (a, b) => lCorridor(k, a, b));
   return rooms;
@@ -89,7 +92,7 @@ export function crypt(k: LayoutKit): Room[] {
 /** CAVERNS: winding drunk-walk tunnels, ragged chambers, side pockets; a few clean carved chambers stay vault-able. */
 export function caverns(k: LayoutKit): Room[] {
   const { g, rand, ok } = k;
-  const rooms = k.placeRooms(11, 5, 9, 4, 7);
+  const rooms = k.placeRooms(scaledCount(11), 5, 9, 4, 7);
   rooms.forEach(k.fillRoom);
   k.mst(rooms, (a, b) => {
     let x = a.cx, y = a.cy;
@@ -109,7 +112,7 @@ export function caverns(k: LayoutKit): Room[] {
     for (let y = cy - r; y <= cy + r; y++) for (let x = cx - r; x <= cx + r; x++)
       if (ok(x, y) && x > 1 && y > 1 && x < W - 2 && y < H - 2 && (x - cx) ** 2 + (y - cy) ** 2 <= r * r + rand.next() * 2) g[y][x] = ".";
   };
-  const clean = new Set(rand.shuffle(rooms.slice(1)).slice(0, 4));
+  const clean = new Set(rand.shuffle(rooms.slice(1)).slice(0, scaledCount(4)));
   for (const r of rooms) {
     if (clean.has(r)) continue;
     r.rough = true;
@@ -123,17 +126,17 @@ export function caverns(k: LayoutKit): Room[] {
   const floors: Pt[] = [];
   for (let y = 2; y < H - 2; y++) for (let x = 2; x < W - 2; x++)
     if (g[y][x] === "." && !rooms.some((r) => x >= r.x - 3 && x < r.x + r.w + 3 && y >= r.y - 3 && y < r.y + r.h + 3)) floors.push([x, y]);
-  for (let n = 0; n < 6 && floors.length; n++) { const [x, y] = rand.pick(floors); blob(x, y, rand.int(2, 3)); }
+  for (let n = 0; n < scaledCount(6) && floors.length; n++) { const [x, y] = rand.pick(floors); blob(x, y, rand.int(2, 3)); }
   return rooms;
 }
 
 /** CATACOMBS: 2-wide maze on a 3-tile cell grid; chambers walled off with 1-3 doorways; light braiding. */
 export function catacombs(k: LayoutKit): Room[] {
   const { g, rand } = k;
-  const CW = 14, CH = 10;
+  const CW = Math.floor((W - 2) / 3), CH = Math.floor((H - 2) / 3);
   const room: (CellRoom | null)[][] = Array.from({ length: CH }, () => Array<CellRoom | null>(CW).fill(null));
   const rooms: CellRoom[] = [];
-  for (let i = 0; i < 300 && rooms.length < 9; i++) {
+  for (let i = 0; i < scaledCount(300) && rooms.length < scaledCount(9); i++) {
     const cw = rand.int(2, 3), chh = rand.int(2, 3), ci = rand.int(0, CW - cw), cj = rand.int(0, CH - chh);
     if (rooms.some((r) => ci < r.ci + r.cw + 1 && ci + cw + 1 > r.ci && cj < r.cj + r.ch + 1 && cj + chh + 1 > r.cj)) continue;
     const x = 1 + 3 * ci, y = 1 + 3 * cj, w = 3 * cw - 1, h = 3 * chh - 1;
@@ -163,7 +166,7 @@ export function catacombs(k: LayoutKit): Room[] {
     }
   }
   // braid: knock out some walls between corridor cells to create loops
-  for (let n = 0; n < 26; n++) {
+  for (let n = 0; n < scaledCount(26); n++) {
     const i = rand.int(0, CW - 1), j = rand.int(0, CH - 1), [a, b] = rand.pick(N), i2 = i + a, j2 = j + b;
     if (i2 >= 0 && j2 >= 0 && i2 < CW && j2 < CH && !room[j][i] && !room[j2][i2]) openWall(i, j, i2, j2);
   }
@@ -218,7 +221,7 @@ export function fairgrounds(k: LayoutKit, desert = false): Room[] | null {
   const left = desert ? 0 : rand.int(2, 4), right = desert ? W - 1 : W - rand.int(3, 5);
   const top = desert ? 0 : rand.int(2, 3), bottom = desert ? H - 1 : H - rand.int(3, 4);
   for (let y = top + 1; y < bottom - 1; y++) for (let x = left + 1; x < right - 1; x++) g[y][x] = ".";
-  const nc = rand.int(3, 4), nr = 3, xs = [left], ys = [top];
+  const nc = rand.int(5, 6), nr = 4, xs = [left], ys = [top];
   for (let i = 1; i < nc; i++) xs.push(Math.round(left + (i * (right - left)) / nc) + rand.int(-1, 1));
   xs.push(right);
   for (let j = 1; j < nr; j++) ys.push(Math.round(top + (j * (bottom - top)) / nr) + rand.int(-1, 1));
@@ -268,7 +271,7 @@ export function fairgrounds(k: LayoutKit, desert = false): Room[] | null {
     const a = find(e[0].j * nc + e[0].i), b = find(e[1].j * nc + e[1].i);
     if (a !== b) { par[a] = b; chosen.push(e); } else spare.push(e);
   }
-  chosen.push(...spare.slice(0, rand.int(1, 3)));
+  chosen.push(...spare.slice(0, rand.int(scaledCount(1), scaledCount(3))));
   for (const [a, b] of chosen) {
     const cand: Pt[][] = [];
     if (a.j === b.j) {
@@ -288,7 +291,7 @@ export function fairgrounds(k: LayoutKit, desert = false): Room[] | null {
 
 /** Long, narrow library rooms connected by aisles. */
 export function archive(k: LayoutKit): Room[] {
-  const rooms = k.placeRooms(13, 5, 11, 4, 6);
+  const rooms = k.placeRooms(scaledCount(13), 5, 11, 4, 6);
   rooms.forEach(k.fillRoom);
   k.mst(rooms, (a, b) => lCorridor(k, a, b));
   return rooms;
@@ -306,7 +309,7 @@ export function hollow(k: LayoutKit): Room[] {
 
 /** Chamfered observatory chambers joined by narrow bridges. */
 export function observatory(k: LayoutKit): Room[] {
-  const rooms = k.placeRooms(11, 6, 9, 6, 9);
+  const rooms = k.placeRooms(scaledCount(11), 6, 9, 6, 9);
   for (const r of rooms) {
     k.fillRoom(r);
     for (const [x, y] of [[r.x, r.y], [r.x + r.w - 1, r.y], [r.x, r.y + r.h - 1], [r.x + r.w - 1, r.y + r.h - 1]])
