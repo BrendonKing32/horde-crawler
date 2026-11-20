@@ -13,7 +13,7 @@ CI (`.github/workflows/ci.yml`) runs typecheck, tests and build on every push an
 
 ## Architecture
 
-- `src/gen/` is pure and DOM-free. `buildFloor(seed, depth)` returns 32 rows of 44 chars; the legend is at the top of `generator.ts`. Layouts per area live in `layouts.ts`; shared placement (vaults, gates, items, area features) in `generator.ts`.
+- `src/gen/` is pure and DOM-free. `buildFloor(seed, depth)` returns 48 rows of 66 chars; the legend is at the top of `generator.ts`. Layouts per area live in `layouts.ts`; shared placement (vaults, gates, items, area features) in `generator.ts`.
 - **RNG call order defines the map for a seed.** Reordering `rand.*` calls changes every seeded floor. That's allowed, but intentional only.
 - Generation is validate-and-retry: `generate()` returns `null` when it can't meet the guarantees, and `buildFloor` retries with derived seeds. Keep new constraints in that style rather than patching maps afterwards.
 - `src/game/state.ts` exports the live floor as `S` (an ES live binding reassigned by `newFloor`). Game modules read and mutate `S` directly; that's the intended pattern.

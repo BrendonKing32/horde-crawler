@@ -28,7 +28,7 @@ The start screen has a **Testing: start in** row to jump straight to any area.
 
 - **Two classes.** Warden (slow, armored, heavy shots) can activate Bulwark to halve monster damage briefly; Ranger (fast, rapid fire, fragile) can Quickstep-dash and dodge monster hits.
 - **Area champions.** Every fifth floor ends with a champion fight. Reach the exit after defeating it to claim victory or continue deeper.
-- **Procedural floors** that change layout algorithm and theme every five floors:
+- **Procedural floors** spanning 66 x 48 tiles, with rooms, spawners, supplies and hazards scaled to maintain density across 2.25 times the original map area. Layout algorithm and theme change every five floors:
 
   | Floors | Area | Layout | Area hazard | Enemy twist |
   |---|---|---|---|---|

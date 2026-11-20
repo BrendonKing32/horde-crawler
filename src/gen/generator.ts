@@ -1,5 +1,5 @@
 /**
- * Floor generator. Produces a 44x32 character map:
+ * Floor generator. Produces a 66x48 character map:
  *
  *   #  wall            .  floor           t  dead tree        P  player start     X  exit
  *   D  locked door     K  key             G  horde spawner    L  lobber den
@@ -13,7 +13,7 @@
  * - every region has food; every reaper has a potion at or before its own region
  */
 import { makeRand } from "./rng";
-import { H, W, archive, caverns, catacombs, crypt, fairgrounds, foundry, hollow, makeKit, observatory, plagueWard, type LayoutKit, type Pt, type Room } from "./layouts";
+import { H, W, archive, caverns, catacombs, crypt, fairgrounds, foundry, hollow, makeKit, observatory, plagueWard, scaledCount, type LayoutKit, type Pt, type Room } from "./layouts";
 
 export const GATES = "abc";
 export const LEVERS = "xyz";
@@ -192,7 +192,8 @@ export function generate(seed: number, depth: number, area: AreaId = AREA.CRYPT)
   const normal = open.filter((r) => r !== start && r !== exitRoom);
   const pool = normal.length ? normal : [start];
   const far2 = (x: number, y: number, n: number) => Math.hypot(x - start.cx, y - start.cy) >= n;
-  const gens = Math.min(14, 6 + depth * 2), dens = Math.min(gens - 2, 1 + depth, 6), reapers = Math.min(4, depth);
+  const gens = scaledCount(Math.min(14, 6 + depth * 2));
+  const dens = scaledCount(Math.min(1 + depth, 6)), reapers = scaledCount(Math.min(4, depth));
   const genOk: Test = (x, y) => {
     if (D[y][x] < 8 || !far2(x, y, 7)) return false;
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ("#DGLPXabcxyz".includes(g[y + dy][x + dx])) return false;
@@ -201,30 +202,30 @@ export function generate(seed: number, depth: number, area: AreaId = AREA.CRYPT)
   spread("L", dens, pool, 1, genOk);
   spread("G", gens - dens, pool, 1, genOk);
   for (let k = 0; k < stages.length; k++) { const rs = inRegion(k); if (rs.length) spread("F", 1, rs, 0, (x, y) => region(x, y) === k); }
-  spread("F", Math.max(1, 5 - stages.length), open, 0);
+  spread("F", Math.max(1, scaledCount(5) - stages.length), open, 0);
   for (const [x, y] of spread("R", reapers, pool, 0, (x, y) => D[y][x] >= 14 && far2(x, y, 13))) {
     const k = region(x, y);
     spread("O", 1, open.filter((r) => region(r.cx, r.cy) <= k), 0, (px, py) => region(px, py) <= k);
   }
   spread("K", 1 + (extra ? 1 : 0), open, 0, (x, y) => D[y][x] >= 10);
-  spread("$", 3, pool, 0);
+  spread("$", scaledCount(3), pool, 0);
 
   // area features
-  if (area === AREA.CRYPT) spread("S", 3 + Math.min(3, depth), pool, 1, genOk);
+  if (area === AREA.CRYPT) spread("S", scaledCount(3 + Math.min(3, depth)), pool, 1, genOk);
   if (area === AREA.CATACOMBS)
     rand.shuffle([...cuts.values()].filter((t) => t.length <= 3 && t.every(([x, y]) => g[y][x] === ".")))
-      .slice(0, 5 + (depth % 5))
+      .slice(0, scaledCount(5 + (depth % 5)))
       .forEach((t) => t.forEach(([x, y]) => (g[y][x] = "^")));
   if (area === AREA.PLAGUE)
-    for (let n = 0; n < 5; n++) {
+    for (let n = 0; n < scaledCount(5); n++) {
       const r = rand.pick(pool), cx = rand.int(r.x + 1, r.x + r.w - 2), cy = rand.int(r.y + 1, r.y + r.h - 2);
       for (let y = cy - 1; y <= cy + 1; y++) for (let x = cx - 2; x <= cx + 2; x++)
         if (g[y][x] === "." && inRoom(x, y) && rand.next() < 0.75) g[y][x] = "~";
     }
   if (area === AREA.FOUNDRY) {
-    if (!spread("V", 24, pool, 0).length || !spread("M", 8, pool, 0).length) return null;
+    if (!spread("V", scaledCount(24), pool, 0).length || !spread("M", scaledCount(8), pool, 0).length) return null;
   }
-  if (area === AREA.HOLLOW && !spread("U", 18, pool, 0).length) return null;
+  if (area === AREA.HOLLOW && !spread("U", scaledCount(18), pool, 0).length) return null;
   if (area === AREA.OBSERVATORY) {
     const candidates: Pt[] = [];
     for (let y = 2; y < H - 2; y++) for (let x = 2; x < W - 2; x++) {
@@ -241,7 +242,7 @@ export function generate(seed: number, depth: number, area: AreaId = AREA.CRYPT)
     for (const [x, y] of rand.shuffle(candidates)) {
       if (N4.some(([dx, dy]) => g[y + dy][x + dx] === "H")) continue;
       g[y][x] = "H";
-      if (++placed === 4) break;
+      if (++placed === scaledCount(4)) break;
     }
     if (!placed) return null;
   }
