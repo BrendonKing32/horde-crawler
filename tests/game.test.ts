@@ -223,6 +223,45 @@ describe("spawner balance", () => {
   });
 });
 
+describe("enemy separation", () => {
+  it("avoids distance calculations for a dispersed horde", () => {
+    const world = combatFloor(1);
+    world.p.x = 16; world.p.y = 16;
+    world.enemies = Array.from({ length: 130 }, (_, i) => ({
+      ...enemy(650 + (i % 13) * 40, 450 + Math.floor(i / 13) * 40, "grunt"),
+      r: 10,
+    }));
+    const hypot = vi.spyOn(Math, "hypot");
+    updateEnemies(0);
+    expect(hypot.mock.calls.length).toBeLessThan(260);
+  });
+
+  it("preserves ordered pushes, touching and coincident pairs, and dead-enemy removal", () => {
+    const world = combatFloor(1);
+    world.p.x = 16; world.p.y = 16;
+    world.enemies = [700, 716, 734, 800, 818, 870, 870].map((x) => ({
+      ...enemy(x, 500, "grunt"), r: 10,
+    }));
+    world.enemies.push({ ...enemy(700, 500, "grunt"), r: 10, dead: true });
+
+    updateEnemies(0);
+
+    expect(world.enemies.map((e) => e.x)).toEqual([699, 716.5, 734.5, 800, 818, 870, 870]);
+    expect(world.enemies.every((e) => e.y === 500 && !e.dead)).toBe(true);
+  });
+
+  it("does not push an overlapping enemy through a wall", () => {
+    const world = combatFloor(1);
+    world.p.x = 16; world.p.y = 16;
+    world.grid[15][21] = "#";
+    world.enemies = [646, 662].map((x) => ({ ...enemy(x, 496, "grunt"), r: 10 }));
+
+    updateEnemies(0);
+
+    expect(world.enemies.map((e) => e.x)).toEqual([645, 662]);
+  });
+});
+
 describe("new horde enemies", () => {
   it("adds shieldbearers and summoners to the horde spawn cycle", () => {
     const world = combatFloor(1);
